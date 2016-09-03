@@ -204,7 +204,6 @@ def send_message(user_or_uid, text, msg_type='message', force_reply=False, markd
         if force_reply:
             build['reply_markup'] = {'force_reply': True}
 
-        logging.debug("tmps: {}".format(markdown))
         if markdown:
             build['parse_mode'] = 'Markdown'
         if msg_type == 'promo' or disable_web_page_preview:

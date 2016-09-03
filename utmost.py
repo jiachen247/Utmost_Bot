@@ -134,7 +134,7 @@ class UtmostDevoSource(object):
 
         if material.text is not None:
             logging.info("datastore {} hit. Returning...".format(memkey))
-            memcache.set(memkey, devo)
+            memcache.set(memkey, material.text)
             return devo_dynamic_header + material.text
 
         # lazy init
