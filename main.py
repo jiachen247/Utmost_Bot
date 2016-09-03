@@ -19,7 +19,7 @@ class AbstractDevoSource(object):
         """Retrieve data from the input source and return an object."""
         return
 
-    #deprecieated
+    # deprecieated
     @abc.abstractmethod
     def get_devo_old(self, delta=0):
         """Save the data object to the output."""
@@ -452,7 +452,7 @@ class UtmostPage(webapp2.RequestHandler):
 
             return
 
-        if text == None:
+        if text is None:
             logging.info(LOG_TYPE_NON_TEXT)
             migrate_to_chat_id = msg.get('migrate_to_chat_id')
             if migrate_to_chat_id:
@@ -467,7 +467,7 @@ class UtmostPage(webapp2.RequestHandler):
         short_cmd = ''.join(cmd.split())
 
         def is_command(word):
-            flexi_pattern = ('/{}@Utmostbot'.format(word), '@Utmostbot/{}'.format(word))
+            flexi_pattern = ('/{}@Utmost_bot'.format(word), '@Utmost_bot/{}'.format(word))
             return cmd == '/' + word or short_cmd.startswith(flexi_pattern)
 
         if is_command('today'):
@@ -478,7 +478,7 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response, markdown=True, disable_web_page_preview=True)
 
-        elif is_command('yesterday'):
+        elif is_command('yesterday') or is_command('yest'):
             send_typing(uid)
             response = get_devo(-1)
             if response is None:
@@ -486,7 +486,7 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response, markdown=True, disable_web_page_preview=True)
 
-        elif is_command('tomorrow'):
+        elif is_command('tomorrow') or is_command('tmr'):
             send_typing(uid)
             response = get_devo(1)
             if response is None:
@@ -704,7 +704,7 @@ class VerifyPage(webapp2.RequestHandler):
             self.abort(502)
 
         response = json.loads(result.content)
-        if response.get('ok') == True:
+        if response.get('ok'):
             logging.info(LOG_USER_REACHABLE.format(uid, user.get_description()))
         else:
             error_description = str(response.get('description'))
