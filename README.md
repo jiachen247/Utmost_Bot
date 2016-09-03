@@ -20,6 +20,8 @@ This lead to 2 things,
 
 So far, all usage has been under GAE's free qouta YAYERS:)
 
+- added DevoSource Interface to using Abstract Base Classes to make reusing code easier.
+
 
 To God be the Glory
 
