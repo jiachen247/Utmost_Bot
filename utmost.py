@@ -103,20 +103,17 @@ class UtmostDevoSource(object):
     DEVO_BASE_URL = "http://jiachen.rocks/mytmpdir/jiachen.html"
     base_devo_url = "https://utmost.org/2004/{0}/{1}?calendar-redirect=true&post-type=post".format
     devo_object = None
-    CACHE = True
+    STORE_CACHE = True
 
     YESTERDAY = -1
     TODAY = 0
     TOMORROW = 1
 
-    # base_devo_url = "http://jiachen.rocks/mytmpdir/jiachen.html"
 
     def strip_markdown(string):
         return string.replace('*', ' ').replace('_', ' ')
 
     def get_devo(self, delta=0):
-        # to clear peskytelegram retry
-        # return "hello"
 
         today_date = datetime.utcnow() + timedelta(hours=8, days=delta)
 
@@ -147,19 +144,17 @@ class UtmostDevoSource(object):
             logging.warning('Error fetching devo:\n' + str(e))
             return None
 
-        # parse update global debo object
         parse_status = self.__parse_utmost_org(result.content, today_date)
 
         if not parse_status:
-            # do err catching here
             logging.warning('Error parseing devo:\n')
 
-            if delta == -1:
-                return 'Sorry, the Utmost website is no longer hosting yesterday\'s material.'
-            elif delta == 0:
-                return 'Sorry, the Utmost website does not have today\'s material yet.'
-            else:
-                return 'Sorry, the Utmost website hasn\'t made tomorrow\'s material available yet.'
+            if delta == self.YESTERDAY:
+                return 'Sorry, yesterday\'s material is no longer available.'
+            elif delta == self.TODAY:
+                return 'Sorry, today\'s material is not available.'
+            elif delta == self.TOMORROW:
+                return 'Sorry, tomorrows\'s material is no longer available.'
 
         try:
             result = urlfetch.fetch(self.devo_object.link_to_full_verse_bgw, deadline=10)
@@ -168,15 +163,13 @@ class UtmostDevoSource(object):
             return None
 
         self.devo_object.link_to_full_verse_yv = self.__get_youversion_link(self.devo_object.verse_reference)
-
         self.__parse_biblegateway_com(result.content)
 
         logging.info("Parsing Success:: All content parsed successfuly.")
-
         final_devo = self.devo_object.format_to_message()
 
         # cache
-        if self.CACHE:
+        if self.STORE_CACHE:
             logging.debug("Storing devo in memcache & db {}".format(memkey))
             memcache.set(memkey, final_devo)
             update_material(material,final_devo)

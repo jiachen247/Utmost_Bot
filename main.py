@@ -19,6 +19,7 @@ class AbstractDevoSource(object):
         """Retrieve data from the input source and return an object."""
         return
 
+    #deprecieated
     @abc.abstractmethod
     def get_devo_old(self, delta=0):
         """Save the data object to the output."""
@@ -30,11 +31,8 @@ AbstractDevoSource.register(UtmostDevoSource)
 devo_source = UtmostDevoSource()
 get_devo = devo_source.get_devo
 get_devo_old = devo_source.get_devo_old
-# TODO redo impl for utmost.org
 
-
-
-from shadow import BOT_TOKEN, CREATOR_ID, BOT_ID, BOTFAMILY_HASH
+from shadow import BOT_TOKEN, CREATOR_ID, BOT_ID
 
 TELEGRAM_URL = 'https://api.telegram.org/bot' + BOT_TOKEN
 TELEGRAM_URL_SEND = TELEGRAM_URL + '/sendMessage'
@@ -475,12 +473,8 @@ class UtmostPage(webapp2.RequestHandler):
         if is_command('today'):
             send_typing(uid)
             response = get_devo()
-            if response == None:
+            if response is None:
                 response = self.REMOTE_ERROR
-            elif response.startswith('Sorry'):
-                # response = get_devo_old()
-                if response == None:
-                    response = self.REMOTE_ERROR
 
             send_message(user, response, markdown=True, disable_web_page_preview=True)
 
@@ -489,22 +483,14 @@ class UtmostPage(webapp2.RequestHandler):
             response = get_devo(-1)
             if response is None:
                 response = self.REMOTE_ERROR
-            elif response.startswith('Sorry'):
-                # response = get_devo_old(-1)
-                if response == None:
-                    response = self.REMOTE_ERROR
 
             send_message(user, response, markdown=True, disable_web_page_preview=True)
 
         elif is_command('tomorrow'):
             send_typing(uid)
             response = get_devo(1)
-            if response == None:
+            if response is None:
                 response = self.REMOTE_ERROR
-            elif response.startswith('Sorry'):
-                # response = get_devo_old(1)
-                if response == None:
-                    response = self.REMOTE_ERROR
 
             send_message(user, response, markdown=True, disable_web_page_preview=True)
 
@@ -575,7 +561,7 @@ class SendPage(webapp2.RequestHandler):
         RESPONSE_QN = "In light of this *truths*, how will you live *today* differently?"
 
         devo = get_devo()
-        if devo == None:
+        if devo is None:
             return False
         elif devo.startswith('Sorry'):
             devo = get_devo_old()
@@ -585,7 +571,7 @@ class SendPage(webapp2.RequestHandler):
         try:
             for user in query.run(batch_size=500):
                 send_message(user, devo, msg_type='daily', markdown=True, disable_web_page_preview=True)
-                #send_message(user, RESPONSE_QN, markdown=True, force_reply=True)
+                # send_message(user, RESPONSE_QN, markdown=True, force_reply=True)
         except Exception as e:
             logging.warning(LOG_ERROR_DAILY + str(e))
             return False
@@ -593,17 +579,16 @@ class SendPage(webapp2.RequestHandler):
         return True
 
     def get(self):
-        if self.run() == False:
+        if not self.run():
             taskqueue.add(url='/send')
 
     def post(self):
-        if self.run() == False:
+        if not self.run():
             self.abort(502)
 
 
 class PromoPage(webapp2.RequestHandler):
     def get(self):
-        # dangerous? should perform some validation
         taskqueue.add(url='/promo', method="POST")
 
     def post(self):
@@ -619,7 +604,7 @@ class PromoPage(webapp2.RequestHandler):
                 promo_msg = 'Hi {}, do you find Utmost Bot useful?'.format(name)
             promo_msg += ' Why not rate it on the bot store (you don\'t have to exit' + \
                          ' Telegram)!\nhttps://telegram.me/storebot?start=utmost\_bot'
-            send_message(user, promo_msg, msg_type='promo',markdown=True)
+            send_message(user, promo_msg, msg_type='promo', markdown=True)
 
 
 class MessagePage(webapp2.RequestHandler):
@@ -643,30 +628,6 @@ class MessagePage(webapp2.RequestHandler):
             logging.debug(data)
             self.abort(502)
 
-
-# class PhotoPage(webapp2.RequestHandler):
-#     def post(self):
-#         uid = self.request.body
-#         user = get_user(uid)
-
-#         build = {
-#             'chat_id': uid,
-#             'photo': 'AgADBQAD0agxGwgAAcgBjTgu4ZTCQJCCVb4yAARl_44G6ouSJaWxAAIC'
-#         }
-#         data = json.dumps(build)
-
-#         try:
-#             result = telegram_photo(data, 4)
-#         except Exception as e:
-#             logging.warning(LOG_ERROR_SENDING.format_to_message('Photo', uid, user.get_description(), str(e)))
-#             logging.debug(data)
-#             self.abort(502)
-
-#         response = json.loads(result.content)
-
-#         if handle_response(response, user, uid, 'photo') == False:
-#             logging.debug(data)
-#             self.abort(502)
 
 class MassPage(webapp2.RequestHandler):
     def get(self):
@@ -705,9 +666,8 @@ class CachePage(webapp2.RequestHandler):
         status = "Status : "
 
         try:
-            get_devo(0)
-            get_devo(-1)
-            get_devo(1)
+            for delta in range(-1, 1):
+                get_devo(delta)
         except Exception as e:
             status += "Failed - " + str(e)
 
@@ -771,6 +731,4 @@ app = webapp2.WSGIApplication([
     ('/mass', MassPage),
     ('/verify', VerifyPage),
     ('/cache', CachePage),
-
-    # ('/photo', PhotoPage),
 ], debug=True)
