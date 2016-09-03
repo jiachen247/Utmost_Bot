@@ -1,0 +1,27 @@
+application: utmost-141513
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: yes
+
+handlers:
+- url: /(admin|migrate)
+  script: admin.app
+  login: admin
+
+- url: /(send|message|promo|mass|photo|verify|cache)
+  script: main.app
+  login: admin
+
+- url: /favicon.ico
+  static_files: favicon.ico
+  upload: favicon.ico
+
+- url: /.*
+  script: main.app
+
+libraries:
+- name: webapp2
+  version: "2.5.2"
+- name: lxml
+  version: "2.3"
