@@ -25,5 +25,10 @@ So far, all usage has been under GAE's free qouta YAYERS:)
 
 To God be the Glory
 
+Versions:
+v1 : Stable Release
+v2 : Rolling out Response Question  7 Sep 2016
+    1. add message to cron job
+    2. add response question to cron job
 
 
