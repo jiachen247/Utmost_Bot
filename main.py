@@ -19,6 +19,11 @@ class AbstractDevoSource(object):
         """Retrieve data from the input source and return an object."""
         return
 
+    @abc.abstractmethod
+    def get_devo_title(self, delta=0):
+        """Retrieve data from the input source and return an object."""
+        return
+
     # deprecieated
     @abc.abstractmethod
     def get_devo_old(self, delta=0):
@@ -28,9 +33,14 @@ class AbstractDevoSource(object):
 
 AbstractDevoSource.register(UtmostDevoSource)
 
-devo_source = UtmostDevoSource()
+#havent tried this yet
+devo_source = AbstractDevoSource()
 get_devo = devo_source.get_devo
 get_devo_old = devo_source.get_devo_old
+get_devo_title = devo_source.get_devo_title
+
+# TODO CAN BE WORDED BETTER
+RESPONSE_QN = "Good morning, {}! \nResponse qn to be decided"
 
 from shadow import BOT_TOKEN, CREATOR_ID, BOT_ID
 
@@ -93,6 +103,12 @@ def get_today_time():
     today = (datetime.utcnow() + timedelta(hours=8)).date()
     today_time = datetime(today.year, today.month, today.day) - timedelta(hours=8)
     return today_time
+
+
+class Journal(db.Model):
+    created = db.DateTimeProperty(auto_now_add=True)
+    title = db.StringProperty(indexed=False)
+    entry = db.TextProperty()
 
 
 class User(db.Model):
@@ -403,21 +419,29 @@ class UtmostPage(webapp2.RequestHandler):
 
         msg_reply = msg.get('reply_to_message')
         logging.debug("msg reply: {}".format(msg_reply))
-        if msg_reply and str(msg_reply.get('from').get('id')) == str(BOT_ID) and \
-                        msg_reply.get('text') == self.FEEDBACK_STRING:
-            logging.info(LOG_TYPE_FEEDBACK + str(text))
+        if msg_reply and str(msg_reply.get('from').get('id')) == str(BOT_ID):
+            logging.info("This message is a reply")
 
-            if user.is_group():
-                group_string = ' via group {} ({})'.format(name, uid)
-            else:
-                group_string = ''
+            if msg_reply.get('text') == self.FEEDBACK_STRING:
+                if user.is_group():
+                    group_string = ' via group {} ({})'.format(name, uid)
+                else:
+                    group_string = ''
 
-            msg_dev = self.FEEDBACK_ALERT.format(get_from_string(), actual_id, group_string, text)
-            msg_user = self.FEEDBACK_SUCCESS.format(actual_name)
+                msg_dev = self.FEEDBACK_ALERT.format(get_from_string(), actual_id, group_string, text)
+                msg_user = self.FEEDBACK_SUCCESS.format(actual_name)
 
-            send_message(CREATOR_ID, msg_dev)
-            send_message(user, msg_user)
-            return
+                send_message(CREATOR_ID, msg_dev)
+                send_message(user, msg_user)
+                return
+
+            elif msg_reply.get('text') == RESPONSE_QN:
+                response = "time + date + title \n\n" + text
+                journal = Journal()
+                journal.entry = text
+                journal.title = get_devo_title()
+                journal.put()
+                send_message(user, response)
 
         if user.last_sent is None or text == '/start':
             if user.last_sent is None:
@@ -537,6 +561,11 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response, force_reply=True)
 
+        elif is_command('offresponseqn'):
+            # TODO write implementation
+            response = "Response turned off."
+            send_message(user, response)
+
         else:
             logging.info(LOG_UNRECOGNISED)
             if user.is_group() and '@Utmostbot' not in cmd:
@@ -554,11 +583,9 @@ class UtmostPage(webapp2.RequestHandler):
 class SendPage(webapp2.RequestHandler):
     def run(self):
         query = User.all()
+        query.filter('username = ', 'JIACHENNN')
         query.filter('active =', True)
         query.filter('last_auto <', get_today_time())
-
-        # TODO CAN BE WORDED BETTER
-        RESPONSE_QN = "In light of this *truths*, how will you live *today* differently?"
 
         devo = get_devo()
         if devo is None:
@@ -570,8 +597,15 @@ class SendPage(webapp2.RequestHandler):
 
         try:
             for user in query.run(batch_size=500):
-                send_message(user, devo, msg_type='daily', markdown=True, disable_web_page_preview=True)
-                # send_message(user, RESPONSE_QN, markdown=True, force_reply=True)
+                name = user.first_name
+                if user.last_name is not None:
+                    name += user.last_name
+
+                # try with logging first
+                logging.debug(RESPONSE_QN.format(name))
+
+                # send_message(user, devo, msg_type='daily', markdown=True, disable_web_page_preview=True)
+                # send_message(user, RESPONSE_QN.format(name), markdown=True, force_reply=True)
         except Exception as e:
             logging.warning(LOG_ERROR_DAILY + str(e))
             return False

@@ -9,6 +9,7 @@ import re
 
 class Material(db.Model):
     text = db.TextProperty()
+    title = db.StringProperty(indexed=False)
 
 
 def get_material(name):
@@ -16,12 +17,12 @@ def get_material(name):
     material = db.get(key)
     if material is None:
         material = Material(key_name=str(name))
-        material.put()
     return material
 
 
-def update_material(material, devo):
+def update_material(material, devo,title):
     material.text = devo
+    material.title = title
     material.put()
 
 
@@ -113,8 +114,18 @@ class UtmostDevoSource(object):
     def strip_markdown(string):
         return string.replace('*', ' ').replace('_', ' ')
 
-    def get_devo(self, delta=0):
+    def get_devo_title(self, delta=0):
+        today_date = datetime.utcnow() + timedelta(hours=8, days=delta)
+        memkey = today_date.strftime("%d-%m")
+        material = get_material(memkey)
 
+        if material.text is not None:
+            logging.info("datastore {} hit. Returning...".format(memkey))
+            return material.header
+        else:
+            raise Exception("Devo Title not found...")
+
+    def get_devo(self, delta=0):
         today_date = datetime.utcnow() + timedelta(hours=8, days=delta)
 
         daynames = ['Yesterday\'s', 'Today\'s', 'Tomorrow\'s']
@@ -172,7 +183,7 @@ class UtmostDevoSource(object):
         if self.STORE_CACHE:
             logging.debug("Storing devo in memcache & db {}".format(memkey))
             memcache.set(memkey, final_devo)
-            update_material(material,final_devo)
+            update_material(material,final_devo,self.devo_object.heading)
 
         return devo_dynamic_header + final_devo
 
