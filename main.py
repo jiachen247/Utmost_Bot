@@ -466,11 +466,12 @@ class UtmostPage(webapp2.RequestHandler):
         cmd = text.lower().strip()
         short_cmd = ''.join(cmd.split())
 
-        def is_command(word):
+        def is_command_equals(word):
             flexi_pattern = ('/{}@Utmost_bot'.format(word), '@Utmost_bot/{}'.format(word))
-            return cmd == '/' + word or short_cmd.startswith(flexi_pattern)
+            return cmd == '/' + word or sh
+            ort_cmd.startswith(flexi_pattern)
 
-        if is_command('today'):
+        if is_command_equals('today'):
             send_typing(uid)
             response = get_devo()
             if response is None:
@@ -478,7 +479,7 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response, markdown=True, disable_web_page_preview=True)
 
-        elif is_command('yesterday') or is_command('yest'):
+        elif is_command_equals('yesterday') or is_command_equals('yest'):
             send_typing(uid)
             response = get_devo(-1)
             if response is None:
@@ -486,7 +487,7 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response, markdown=True, disable_web_page_preview=True)
 
-        elif is_command('tomorrow') or is_command('tmr'):
+        elif is_command_equals('tomorrow') or is_command_equals('tmr'):
             send_typing(uid)
             response = get_devo(1)
             if response is None:
@@ -494,7 +495,7 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response, markdown=True, disable_web_page_preview=True)
 
-        elif is_command('subscribe'):
+        elif is_command_equals('subscribe'):
             if user.is_active():
                 response = self.SUB_ALREADY
             else:
@@ -504,7 +505,7 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response)
 
-        elif is_command('unsubscribe') or is_command('stop') or is_command('off'):
+        elif is_command_equals('unsubscribe') or is_command_equals('stop') or is_command_equals('off'):
             if not user.is_active():
                 response = self.UNSUB_ALREADY
             else:
@@ -522,7 +523,7 @@ class UtmostPage(webapp2.RequestHandler):
         #
         #     send_message(user, response, markdown=True)
 
-        elif is_command('help'):
+        elif is_command_equals('help'):
             response = self.HELP.format(actual_name)
             if user.is_active():
                 response += self.CMD_LIST_UNSUB
@@ -532,7 +533,7 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response, disable_web_page_preview=True)
 
-        elif is_command('feedback'):
+        elif is_command_equals('feedback'):
             response = self.FEEDBACK_STRING
 
             send_message(user, response, force_reply=True)
