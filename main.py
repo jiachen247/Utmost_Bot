@@ -320,9 +320,9 @@ class UtmostPage(webapp2.RequestHandler):
     CMD_LIST_UNSUB = CMD_LIST + '\n' + CMD_UNSUB
     CMD_LIST_SUB = CMD_LIST + '\n' + CMD_SUB
 
-    WELCOME_GROUP = 'Hello, friends in *{}*! Thanks for adding me in! ' + \
+    WELCOME_GROUP = 'Hello, friends in {}! Thanks for adding me in! ' + \
                     'This group chat is now subscribed.'
-    WELCOME_USER = 'Hello, *{}*! Welcome! You are now subscribed.'
+    WELCOME_USER = 'Hello, {}! Welcome! You are now subscribed.'
     WELCOME_GET_STARTED = ' You may enter one of the following commands:' + CMD_LIST_UNSUB + \
                           '\n\nIn the meantime, here\'s today\'s material to get you started!'
 
