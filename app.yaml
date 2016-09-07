@@ -1,5 +1,5 @@
 application: utmost-141513
-version: 1
+version: 3
 runtime: python27
 api_version: 1
 threadsafe: yes
@@ -11,6 +11,10 @@ handlers:
 
 - url: /(send|message|promo|mass|photo|verify|cache)
   script: main.app
+  login: admin
+
+- url: /run-unit-test
+  script: tests.app
   login: admin
 
 - url: /favicon.ico
