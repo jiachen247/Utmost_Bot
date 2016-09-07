@@ -468,8 +468,7 @@ class UtmostPage(webapp2.RequestHandler):
 
         def is_command_equals(word):
             flexi_pattern = ('/{}@Utmost_bot'.format(word), '@Utmost_bot/{}'.format(word))
-            return cmd == '/' + word or sh
-            ort_cmd.startswith(flexi_pattern)
+            return cmd == '/' + word or short_cmd.startswith(flexi_pattern)
 
         if is_command_equals('today'):
             send_typing(uid)
