@@ -1,13 +1,1 @@
 cron:
-- description: daily devo delivery
-  url: /send
-  schedule: every day 07:00
-  timezone: Asia/Singapore
-- description: daily promo delivery
-  url: /promo
-  schedule: every day 11:11
-  timezone: Asia/Singapore
-- description: daily caching
-  url: /cache
-  schedule: every day 00:00
-  timezone: Asia/Singapore

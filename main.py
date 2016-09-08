@@ -7,6 +7,7 @@ from google.appengine.api import urlfetch, taskqueue, memcache
 from google.appengine.ext import db
 from datetime import datetime, timedelta
 from utmost import UtmostDevoSource
+from versions import Version
 
 import abc
 
@@ -31,6 +32,8 @@ AbstractDevoSource.register(UtmostDevoSource)
 devo_source = UtmostDevoSource()
 get_devo = devo_source.get_devo
 get_devo_old = devo_source.get_devo_old
+
+V = Version()
 
 from shadow import BOT_TOKEN, CREATOR_ID, BOT_ID
 
@@ -105,6 +108,7 @@ class User(db.Model):
     last_auto = db.DateTimeProperty(auto_now_add=True)
     active = db.BooleanProperty(default=True)
     promo = db.BooleanProperty(default=False)
+    version = db.IntegerProperty(indexed=False, default=0)
 
     def get_uid(self):
         return self.key().name()
@@ -185,7 +189,9 @@ def update_profile(uid, uname, fname, lname):
 
 
 def send_message(user_or_uid, text, msg_type='message', force_reply=False, markdown=False,
-                 disable_web_page_preview=False):
+                 disable_web_page_preview=False, inline_keyboard=None):
+    if inline_keyboard is None:
+        inline_keyboard = []
     try:
         uid = str(user_or_uid.get_uid())
         user = user_or_uid
@@ -201,6 +207,8 @@ def send_message(user_or_uid, text, msg_type='message', force_reply=False, markd
 
         if force_reply:
             build['reply_markup'] = {'force_reply': True}
+        elif inline_keyboard:
+            build['reply_markup'] = {'inline_keyboard': inline_keyboard}
 
         if markdown:
             build['parse_mode'] = 'Markdown'
@@ -351,6 +359,12 @@ class UtmostPage(webapp2.RequestHandler):
     FEEDBACK_ALERT = 'Feedback from {} ({}){}:\n{}'
     FEEDBACK_SUCCESS = 'Your message has been sent to my developer. ' + \
                        'Thanks for your feedback, {}!'
+
+    VERSION_SET = 'Hello *{}*, please select your preferred bible version from the list of supported versions below!\n\n'
+    VERSION_SET_GROUP = 'Hello, friends in *{}*. Please select your preferred bible version from the list of ' \
+                        'supported versions below!\n\n'
+
+    VERSION_SET_CURRENT = "You are currently using `{}`!"
 
     UNRECOGNISED = 'Sorry {}, I couldn\'t understand that. ' + \
                    'Please enter one of the following commands:'
@@ -536,6 +550,31 @@ class UtmostPage(webapp2.RequestHandler):
             response = self.FEEDBACK_STRING
 
             send_message(user, response, force_reply=True)
+
+        elif is_command_equals('setversion') or is_command_equals('version'):
+            current_version = V.get_version_string(user.version)
+            response = self.VERSION_SET.format(actual_name) + self.VERSION_SET_CURRENT.format(current_version)
+
+            if user.is_group():
+                response = self.VERSION_SET_GROUP.format(actual_name) + self.VERSION_SET_CURRENT.format(current_version)
+
+            all_versions = V.get_all_versions_in_string()
+            emoticons = ["\xF0\x9F\x8D\x89",
+                         "\xF0\x9F\x8D\x8A",
+                         "\xF0\x9F\x8D\x8C",
+                         "\xF0\x9F\x8D\x8D",
+                         "\xF0\x9F\x8D\x8E",
+                         "\xF0\x9F\x8D\x91",
+                         "\xF0\x9F\x8D\x92",
+                         "\xF0\x9F\x8D\x93"]
+            ik = list()
+            for count, version in enumerate(all_versions):
+                if current_version == version:
+                    continue
+                ik.append([{'text': emoticons[count].decode("utf-8")+version, 'callback_data': str(count)}])
+
+            send_message(user, response, disable_web_page_preview=True,markdown=True,
+                         inline_keyboard=ik)
 
         else:
             logging.info(LOG_UNRECOGNISED)
