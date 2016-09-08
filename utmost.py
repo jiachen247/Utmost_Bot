@@ -109,10 +109,6 @@ class UtmostDevoSource(object):
     TODAY = 0
     TOMORROW = 1
 
-
-    def strip_markdown(string):
-        return string.replace('*', ' ').replace('_', ' ')
-
     def get_devo(self, delta=0):
 
         today_date = datetime.utcnow() + timedelta(hours=8, days=delta)
@@ -180,6 +176,10 @@ class UtmostDevoSource(object):
         pass
 
     def __parse_utmost_org(self, html, today_date):
+        def strip_markdown(string):
+            return (string.replace('*', ' ')
+                    .replace('_', ' ')
+                    .replace('[', '\['))
 
         logging.debug("Starting to parse utmost.org::")
         try:
@@ -191,7 +191,7 @@ class UtmostDevoSource(object):
             demarc = verse_consise.index("—".decode("utf-8"))
             verse_consise = verse_consise[:demarc]
             verse_reference = soup.select_one('#key-verse-box > p > a').text
-            post = soup.select_one('.post-content').text.replace("\n", "\n\n")
+            post = strip_markdown(soup.select_one('.post-content').text.replace("\n", "\n\n"))
             link_to_verse = soup.select_one('#key-verse-box > p > a').get("href").strip().replace("31",
                                                                                                   "ESV")  ## defaults to niv bleh
 
