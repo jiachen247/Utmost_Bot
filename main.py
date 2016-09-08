@@ -105,6 +105,7 @@ class User(db.Model):
     last_auto = db.DateTimeProperty(auto_now_add=True)
     active = db.BooleanProperty(default=True)
     promo = db.BooleanProperty(default=False)
+    version = db.IntegerProperty(indexed=False, default=0)
 
     def get_uid(self):
         return self.key().name()
