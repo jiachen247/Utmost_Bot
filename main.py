@@ -7,6 +7,7 @@ from google.appengine.api import urlfetch, taskqueue, memcache
 from google.appengine.ext import db
 from datetime import datetime, timedelta
 from utmost import UtmostDevoSource
+from versions import Version
 
 import abc
 
@@ -15,7 +16,7 @@ class AbstractDevoSource(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def get_devo(self, delta=0):
+    def get_devo(self, delta=0, version="esv"):
         """Retrieve data from the input source and return an object."""
         return
 
@@ -31,6 +32,8 @@ AbstractDevoSource.register(UtmostDevoSource)
 devo_source = UtmostDevoSource()
 get_devo = devo_source.get_devo
 get_devo_old = devo_source.get_devo_old
+
+V = Version()
 
 from shadow import BOT_TOKEN, CREATOR_ID, BOT_ID
 
@@ -186,7 +189,9 @@ def update_profile(uid, uname, fname, lname):
 
 
 def send_message(user_or_uid, text, msg_type='message', force_reply=False, markdown=False,
-                 disable_web_page_preview=False):
+                 disable_web_page_preview=False, inline_keyboard=None):
+    if inline_keyboard is None:
+        inline_keyboard = []
     try:
         uid = str(user_or_uid.get_uid())
         user = user_or_uid
@@ -202,6 +207,8 @@ def send_message(user_or_uid, text, msg_type='message', force_reply=False, markd
 
         if force_reply:
             build['reply_markup'] = {'force_reply': True}
+        elif inline_keyboard:
+            build['reply_markup'] = {'inline_keyboard': inline_keyboard}
 
         if markdown:
             build['parse_mode'] = 'Markdown'
@@ -332,7 +339,7 @@ class UtmostPage(webapp2.RequestHandler):
 
     SUB_ALREADY = 'Looks like you are already subscribed!'
     SUB_SUCCESS = 'Success!'
-    SUB_APPENDIX = ' You will receive material every day at 7AM (when the rooster crows), Singapore time :)'
+    SUB_APPENDIX = ' You will receive material every day at *7 AM* (_when the rooster crows_), Singapore time :)'
 
     UNSUB_ALREADY = 'Looks like you already unsubscribed! Don\'t worry; ' + \
                     'you won\'t be receiving any more automatic updates.'
@@ -353,18 +360,25 @@ class UtmostPage(webapp2.RequestHandler):
     FEEDBACK_SUCCESS = 'Your message has been sent to my developer. ' + \
                        'Thanks for your feedback, {}!'
 
+    VERSION_SET = 'Hello *{}*, please select your preferred bible version from the list below! ' \
+                  '(_When in doubt, always go for your fav fruit | cant go wrong there_)\n\n'
+
+    VERSION_SET_GROUP = 'Hello, friends in *{}*. Please select your preferred bible version from the list of ' \
+                        'supported versions below!\n\n'
+
+    VERSION_SET_CURRENT = "You are currently using `{}` "
+
+    VERSION_UPDATE_SUCCESS_CALLBACK = "Success! Bible version updated:)"
+
+    VERSION_UPDATE_SUCCESS = "_Congratulations!_ You have updated your bible version successfully from *{}* to *{}*. " \
+                             "Enjoy reading the verses in the new version :) ".format
+
+    VERSION_UPDATE_SAME = "_OPPIESSSS!_  You are already using *{}*!! STOP CHEATING >:(".format
+
     UNRECOGNISED = 'Sorry {}, I couldn\'t understand that. ' + \
                    'Please enter one of the following commands:'
 
-    def post(self):
-        data = json.loads(self.request.body)
-        logging.debug(self.request.body)
-
-        msg = data.get('message')
-        if not msg:
-            logging.info(LOG_TYPE_NON_MESSAGE)
-            return
-
+    def handle_message(self, msg):
         msg_chat = msg.get('chat')
         msg_from = msg.get('from')
 
@@ -420,6 +434,9 @@ class UtmostPage(webapp2.RequestHandler):
             send_message(user, msg_user)
             return
 
+        version_no = user.version
+        version_abbrv = V.get_version_letters(version_no)
+
         if user.last_sent is None or text == '/start':
             if user.last_sent is None:
                 logging.info(LOG_TYPE_START_NEW)
@@ -439,10 +456,10 @@ class UtmostPage(webapp2.RequestHandler):
             send_message(user, response)
 
             send_typing(uid)
-            response = get_devo()
+            response = get_devo(version=version_abbrv)
             if response == None:
                 response = self.REMOTE_ERROR
-            send_message(user, response, markdown=True)
+            send_message(user, response, markdown=True ,disable_web_page_preview=True)
 
             if new_user:
                 if user.is_group():
@@ -473,15 +490,15 @@ class UtmostPage(webapp2.RequestHandler):
 
         if is_command_equals('today'):
             send_typing(uid)
-            response = get_devo()
+            response = get_devo(version=version_abbrv)
             if response is None:
                 response = self.REMOTE_ERROR
 
             send_message(user, response, markdown=True, disable_web_page_preview=True)
 
-        elif is_command_equals('yesterday') or is_command_equals('yest'):
+        elif is_command_equals('yesterday') or is_command_equals('yst'):
             send_typing(uid)
-            response = get_devo(-1)
+            response = get_devo(delta=-1, version=version_abbrv)
             if response is None:
                 response = self.REMOTE_ERROR
 
@@ -489,7 +506,7 @@ class UtmostPage(webapp2.RequestHandler):
 
         elif is_command_equals('tomorrow') or is_command_equals('tmr'):
             send_typing(uid)
-            response = get_devo(1)
+            response = get_devo(delta=1, version=version_abbrv)
             if response is None:
                 response = self.REMOTE_ERROR
 
@@ -503,7 +520,7 @@ class UtmostPage(webapp2.RequestHandler):
                 response = self.SUB_SUCCESS
             response += self.SUB_APPENDIX
 
-            send_message(user, response)
+            send_message(user, response,markdown=True)
 
         elif is_command_equals('unsubscribe') or is_command_equals('stop') or is_command_equals('off'):
             if not user.is_active():
@@ -538,6 +555,37 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response, force_reply=True)
 
+        elif is_command_equals('bible'):
+            emoticons = ["\xF0\x9F\x8D\x89",
+                         "\xF0\x9F\x8D\x8A",
+                         "\xF0\x9F\x8D\x8C",
+                         "\xF0\x9F\x8D\x8D",
+                         "\xF0\x9F\x8D\x8E",
+                         "\xF0\x9F\x8D\x91",
+                         "\xF0\x9F\x8D\x92",
+                         "\xF0\x9F\x8D\x93"]
+
+            current_version = V.get_version_string(user.version)
+            all_versions = V.get_all_versions_in_string()
+            current_emoticon = None
+
+            ik = list()
+            for count, version in enumerate(all_versions):
+                if current_version == version:
+                    current_emoticon = emoticons[count]
+                    continue
+                ik.append([{'text': emoticons[count].decode("utf-8") + " " + version, 'callback_data': str(count)}])
+
+            response = self.VERSION_SET.format(actual_name) + self.VERSION_SET_CURRENT.format(current_version)
+            response += current_emoticon
+
+            if user.is_group():
+                response = self.VERSION_SET_GROUP.format(actual_name) + self.VERSION_SET_CURRENT.format(current_version)
+                response += current_emoticon
+
+            send_message(user, response, disable_web_page_preview=True, markdown=True,
+                         inline_keyboard=ik)
+
         else:
             logging.info(LOG_UNRECOGNISED)
             if user.is_group() and '@Utmostbot' not in cmd:
@@ -551,6 +599,73 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response)
 
+    def handle_callback_query(self, callback_query):
+        qid = callback_query.get('id')
+        data = callback_query.get('data')
+
+        from_user = callback_query.get('from')
+
+        uid = str(from_user.get('id'))
+        first_name = from_user.get('first_name')
+        last_name = from_user.get('last_name')
+        username = from_user.get('username')
+
+        imid = callback_query.get('inline_message_id')
+
+        if not imid:
+            chat_id = callback_query.get('message').get('chat.id')
+            mid = callback_query.get('message').get('message_id')
+
+        user = update_profile(uid, fname=first_name, lname=last_name, uname=username)
+
+        try:
+            logging.debug("callback data -   " + data)
+            new_version_no = int(data)
+            old_version_no = user.version
+            new_version_name = V.get_version_letters(new_version_no)
+            old_version_name = V.get_version_letters(old_version_no)
+
+            if new_version_no == old_version_no:
+                send_message(uid, self.VERSION_UPDATE_SAME(old_version_name), markdown=True)
+
+            elif V.validate_version(new_version_no):
+                user.version = new_version_no
+                user.put()
+                self.answer_callback_query(qid, self.VERSION_UPDATE_SUCCESS_CALLBACK)
+                send_message(uid, self.VERSION_UPDATE_SUCCESS(old_version_name, new_version_name), markdown=True)
+            else:
+                raise Exception("callback data failed validation")
+        except Exception as e:
+            logging.debug(str(e))
+
+        return
+
+    def answer_callback_query(self, qid, status):
+        payload = {'method': 'answerCallbackQuery', 'callback_query_id': qid, 'text': status}
+        output = json.dumps(payload)
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(output)
+        logging.info('Answered callback query!')
+        logging.debug(output)
+
+    def post(self):
+        data = json.loads(self.request.body)
+        logging.debug(self.request.body)
+
+        if data.get('message'):
+            logging.info('Processing incoming message')
+            self.handle_message(data.get('message'))
+        elif data.get('callback_query'):
+            logging.info('Processing incoming callback query')
+            self.handle_callback_query(data.get('callback_query'))
+        # elif data.inline_query:
+        #     logging.info('Processing incoming inline query')
+        #     self.handle_inline_query(data.inline_query)
+        #
+        else:
+            logging.info(LOG_TYPE_NON_MESSAGE)
+            return
+
 
 class SendPage(webapp2.RequestHandler):
     def run(self):
@@ -561,6 +676,7 @@ class SendPage(webapp2.RequestHandler):
         # TODO CAN BE WORDED BETTER
         RESPONSE_QN = "In light of this *truths*, how will you live *today* differently?"
 
+        # todo
         devo = get_devo()
         if devo is None:
             return False
@@ -667,10 +783,13 @@ class CachePage(webapp2.RequestHandler):
         status = "Status : "
 
         try:
-            for delta in range(-1, 1):
-                get_devo(delta)
+            #cache only today and tmr
+            for delta in range(0, 2):
+                for version in range(V.get_size()):
+                    logging.debug("how many times {}".format(version))
+                    get_devo(delta=delta, version=V.get_version_letters(version))
         except Exception as e:
-            status += "Failed - " + str(e)
+            status += "Cache Failed - " + str(e)
 
         else:
             status += "Cache Passed: "
