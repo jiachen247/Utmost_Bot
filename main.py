@@ -373,6 +373,8 @@ class UtmostPage(webapp2.RequestHandler):
     VERSION_UPDATE_SUCCESS = "_Congratulations!_ You have updated your bible version successfully from *{}* to *{}*. " \
                              "Enjoy reading the verses in the new version :) ".format
 
+    VERSION_UPDATE_SAME = "_OPPIESSSS!_ You are already using *{}*!! STOP CHEATING >:(".format
+
     UNRECOGNISED = 'Sorry {}, I couldn\'t understand that. ' + \
                    'Please enter one of the following commands:'
 
@@ -617,11 +619,13 @@ class UtmostPage(webapp2.RequestHandler):
             logging.debug("callback data -   " + data)
             new_version_no = int(data)
             old_version_no = user.version
-
             new_version_name = V.get_version_letters(new_version_no)
             old_version_name = V.get_version_letters(old_version_no)
 
-            if V.validate_version(new_version_no):
+            if new_version_no == old_version_no:
+                send_message(uid, self.VERSION_UPDATE_SAME(old_version_name), markdown=True)
+
+            elif V.validate_version(new_version_no):
                 user.version = new_version_no
                 user.put()
                 self.answer_callback_query(qid, self.VERSION_UPDATE_SUCCESS_CALLBACK)
