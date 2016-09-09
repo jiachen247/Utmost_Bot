@@ -109,14 +109,10 @@ class UtmostDevoSource(object):
     TODAY = 0
     TOMORROW = 1
 
-<<<<<<< HEAD
-    def get_devo(self, delta=0):
-=======
     def strip_markdown(self, string):
         return string.replace('*', ' ').replace('_', ' ').replace('[', '\[')
 
     def get_devo(self, delta=0, version="esv"):
->>>>>>> versions
 
         today_date = datetime.utcnow() + timedelta(hours=8, days=delta)
 
