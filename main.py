@@ -369,15 +369,7 @@ class UtmostPage(webapp2.RequestHandler):
     UNRECOGNISED = 'Sorry {}, I couldn\'t understand that. ' + \
                    'Please enter one of the following commands:'
 
-    def post(self):
-        data = json.loads(self.request.body)
-        logging.debug(self.request.body)
-
-        msg = data.get('message')
-        if not msg:
-            logging.info(LOG_TYPE_NON_MESSAGE)
-            return
-
+    def handle_message(self,msg):
         msg_chat = msg.get('chat')
         msg_from = msg.get('from')
 
@@ -551,7 +543,7 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response, force_reply=True)
 
-        elif is_command_equals('setversion') or is_command_equals('version'):
+        elif is_command_equals('bible'):
             current_version = V.get_version_string(user.version)
             response = self.VERSION_SET.format(actual_name) + self.VERSION_SET_CURRENT.format(current_version)
 
@@ -571,9 +563,9 @@ class UtmostPage(webapp2.RequestHandler):
             for count, version in enumerate(all_versions):
                 if current_version == version:
                     continue
-                ik.append([{'text': emoticons[count].decode("utf-8")+version, 'callback_data': str(count)}])
+                ik.append([{'text': emoticons[count].decode("utf-8") + version, 'callback_data': str(count)}])
 
-            send_message(user, response, disable_web_page_preview=True,markdown=True,
+            send_message(user, response, disable_web_page_preview=True, markdown=True,
                          inline_keyboard=ik)
 
         else:
@@ -588,6 +580,65 @@ class UtmostPage(webapp2.RequestHandler):
                 response += self.CMD_LIST_SUB
 
             send_message(user, response)
+
+    def handle_callback_query(self,callback_query):
+        qid = callback_query.get('id')
+        data = callback_query.get('data')
+
+        from_user = callback_query.get('from')
+
+        uid = str(from_user.get('id'))
+        first_name = from_user.get('first_name')
+        last_name = from_user.get('last_name')
+        username = from_user.get('username')
+
+        imid = callback_query.get('inline_message_id')
+
+        if not imid:
+            chat_id = callback_query.get('message').get('chat.id')
+            mid = callback_query.get('message').get('message_id')
+
+        user = update_profile(uid, fname=first_name, lname=last_name, uname=username)
+
+        try:
+            logging.debug("callback data -   " + data )
+            version = int(data)
+
+            if V.validate_version(version):
+                user.version = version
+                user.put()
+        except Exception as e:
+            logging.debug(str(e))
+
+        status = "need to update status"
+        self.answer_callback_query(qid,status)
+        return
+
+    def answer_callback_query(self, qid, status):
+        payload = {'method': 'answerCallbackQuery', 'callback_query_id': qid, 'text': status}
+        output = json.dumps(payload)
+        self.response.headers['Content-Type'] = 'application/json'
+        self.response.write(output)
+        logging.info('Answered callback query!')
+        logging.debug(output)
+
+    def post(self):
+        data = json.loads(self.request.body)
+        logging.debug(self.request.body)
+
+        if data.get('message'):
+            logging.info('Processing incoming message')
+            self.handle_message(data.get('message'))
+        elif data.get('callback_query'):
+            logging.info('Processing incoming callback query')
+            self.handle_callback_query(data.get('callback_query'))
+        # elif data.inline_query:
+        #     logging.info('Processing incoming inline query')
+        #     self.handle_inline_query(data.inline_query)
+        #
+        else:
+            logging.info(LOG_TYPE_NON_MESSAGE)
+            return
 
 
 class SendPage(webapp2.RequestHandler):
