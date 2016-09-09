@@ -16,7 +16,7 @@ class AbstractDevoSource(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def get_devo(self, delta=0):
+    def get_devo(self, delta=0, version="esv"):
         """Retrieve data from the input source and return an object."""
         return
 
@@ -339,7 +339,7 @@ class UtmostPage(webapp2.RequestHandler):
 
     SUB_ALREADY = 'Looks like you are already subscribed!'
     SUB_SUCCESS = 'Success!'
-    SUB_APPENDIX = ' You will receive material every day at 7AM (when the rooster crows), Singapore time :)'
+    SUB_APPENDIX = ' You will receive material every day at *7 AM* (_when the rooster crows_), Singapore time :)'
 
     UNSUB_ALREADY = 'Looks like you already unsubscribed! Don\'t worry; ' + \
                     'you won\'t be receiving any more automatic updates.'
@@ -373,7 +373,7 @@ class UtmostPage(webapp2.RequestHandler):
     VERSION_UPDATE_SUCCESS = "_Congratulations!_ You have updated your bible version successfully from *{}* to *{}*. " \
                              "Enjoy reading the verses in the new version :) ".format
 
-    VERSION_UPDATE_SAME = "_OPPIESSSS!_ You are already using *{}*!! STOP CHEATING >:(".format
+    VERSION_UPDATE_SAME = "_OPPIESSSS!_  You are already using *{}*!! STOP CHEATING >:(".format
 
     UNRECOGNISED = 'Sorry {}, I couldn\'t understand that. ' + \
                    'Please enter one of the following commands:'
@@ -434,6 +434,9 @@ class UtmostPage(webapp2.RequestHandler):
             send_message(user, msg_user)
             return
 
+        version_no = user.version
+        version_abbrv = V.get_version_letters(version_no)
+
         if user.last_sent is None or text == '/start':
             if user.last_sent is None:
                 logging.info(LOG_TYPE_START_NEW)
@@ -453,10 +456,10 @@ class UtmostPage(webapp2.RequestHandler):
             send_message(user, response)
 
             send_typing(uid)
-            response = get_devo()
+            response = get_devo(version=version_abbrv)
             if response == None:
                 response = self.REMOTE_ERROR
-            send_message(user, response, markdown=True)
+            send_message(user, response, markdown=True ,disable_web_page_preview=True)
 
             if new_user:
                 if user.is_group():
@@ -487,15 +490,15 @@ class UtmostPage(webapp2.RequestHandler):
 
         if is_command_equals('today'):
             send_typing(uid)
-            response = get_devo()
+            response = get_devo(version=version_abbrv)
             if response is None:
                 response = self.REMOTE_ERROR
 
             send_message(user, response, markdown=True, disable_web_page_preview=True)
 
-        elif is_command_equals('yesterday') or is_command_equals('yest'):
+        elif is_command_equals('yesterday') or is_command_equals('yst'):
             send_typing(uid)
-            response = get_devo(-1)
+            response = get_devo(delta=-1, version=version_abbrv)
             if response is None:
                 response = self.REMOTE_ERROR
 
@@ -503,7 +506,7 @@ class UtmostPage(webapp2.RequestHandler):
 
         elif is_command_equals('tomorrow') or is_command_equals('tmr'):
             send_typing(uid)
-            response = get_devo(1)
+            response = get_devo(delta=1, version=version_abbrv)
             if response is None:
                 response = self.REMOTE_ERROR
 
@@ -517,7 +520,7 @@ class UtmostPage(webapp2.RequestHandler):
                 response = self.SUB_SUCCESS
             response += self.SUB_APPENDIX
 
-            send_message(user, response)
+            send_message(user, response,markdown=True)
 
         elif is_command_equals('unsubscribe') or is_command_equals('stop') or is_command_equals('off'):
             if not user.is_active():
@@ -673,6 +676,7 @@ class SendPage(webapp2.RequestHandler):
         # TODO CAN BE WORDED BETTER
         RESPONSE_QN = "In light of this *truths*, how will you live *today* differently?"
 
+        # todo
         devo = get_devo()
         if devo is None:
             return False
@@ -779,10 +783,13 @@ class CachePage(webapp2.RequestHandler):
         status = "Status : "
 
         try:
-            for delta in range(-1, 1):
-                get_devo(delta)
+            #cache only today and tmr
+            for delta in range(0, 2):
+                for version in range(V.get_size()):
+                    logging.debug("how many times {}".format(version))
+                    get_devo(delta=delta, version=V.get_version_letters(version))
         except Exception as e:
-            status += "Failed - " + str(e)
+            status += "Cache Failed - " + str(e)
 
         else:
             status += "Cache Passed: "

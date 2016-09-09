@@ -9,14 +9,16 @@
 # New Kings James Version (NKJV)
 
 class Version():
-
     __versions = [
-                    {"title": "English Standard Version ({})".format, "letters": "ESV"},
-                    {"title": "Amplified Bible ({})".format, "letters": "AMP"},
-                    {"title": "New Living Translation ({})".format, "letters": "NLT"},
-                    {"title": "The Message ({})".format, "letters": "MSG"},
-                    {"title": "New Kings James Version ({})".format, "letters": "NKJV"},
-                ]
+        {"title": "English Standard Version ({})".format, "letters": "ESV"},
+        {"title": "Amplified Bible ({})".format, "letters": "AMP"},
+        {"title": "New Living Translation ({})".format, "letters": "NLT"},
+        {"title": "The Message ({})".format, "letters": "MSG"},
+        {"title": "New Kings James Version ({})".format, "letters": "NKJV"},
+    ]
+
+    def get_size(self):
+        return len(self.__versions)
 
     def validate_version(self, letters):
         # for _version in self.__versions:
@@ -29,8 +31,6 @@ class Version():
         for x in range(len(self.__versions)):
             data.append(self.get_version_string(x))
         return data
-
-
 
     def get_version(self, index):
         if index < len(self.__versions):
@@ -47,7 +47,7 @@ class Version():
 
 
 if __name__ == "__main__":
-    #for testing
+    # for testing
     v = Version()
     print(str(v.get_all_versions_in_string()))
     pass

@@ -43,11 +43,11 @@ class Utmost_Devo_POJO:
         self.link_to_full_verse_bgw = None
         self.link_to_full_verse_yv = None
 
-    def format_to_message(self):
+    def format_to_message(self, version_abbv):
         def if_concise_is_full():
             return '…'.decode('utf-8') in self.verse_concise
 
-        #devotion = dynamic_header
+        # devotion = dynamic_header
         devotion = ' QT - _' + self.date + '_\n\n*'
         devotion += self.heading + '*\n'
 
@@ -57,7 +57,7 @@ class Utmost_Devo_POJO:
             devotion += "\n"
 
         devotion += (
-            '\xF0\x9F\x93\x99	*Scripture (ESV)*\n\n'.decode("utf-8")
+            '\xF0\x9F\x93\x99	*Scripture ('.decode("utf-8") + version_abbv + ')*\n\n'.decode("utf-8")
             + self.verse_full + '\n\n'
             + '	\xF0\x9F\x93\x9D *Reflection*'.decode("utf-8")
             + self.post + "\n"
@@ -109,18 +109,17 @@ class UtmostDevoSource(object):
     TODAY = 0
     TOMORROW = 1
 
+    def strip_markdown(self, string):
+        return string.replace('*', ' ').replace('_', ' ').replace('[', '\[')
 
-    def strip_markdown(string):
-        return string.replace('*', ' ').replace('_', ' ')
-
-    def get_devo(self, delta=0):
+    def get_devo(self, delta=0, version="esv"):
 
         today_date = datetime.utcnow() + timedelta(hours=8, days=delta)
 
         daynames = ['Yesterday\'s', 'Today\'s', 'Tomorrow\'s']
         devo_dynamic_header = '\xF0\x9F\x93\x85 '.decode("utf-8") + ' ' + daynames[delta + 1]
 
-        memkey = today_date.strftime("%d-%m")
+        memkey = today_date.strftime("%d-%m-{}".format(version))
         devo = memcache.get(memkey)
 
         if devo is not None:
@@ -146,6 +145,12 @@ class UtmostDevoSource(object):
 
         parse_status = self.__parse_utmost_org(result.content, today_date)
 
+        self.devo_object.link_to_full_verse_bgw = self.devo_object.link_to_full_verse_bgw.replace("31", version)
+        self.devo_object.bible_in_a_year = self.devo_object.bible_in_a_year.replace("31", version)
+
+        logging.debug("link_to_full_verse__bgw : {}".format(self.devo_object.link_to_full_verse_bgw))
+        logging.debug("bible in a year : {}".format(self.devo_object.bible_in_a_year))
+
         if not parse_status:
             logging.warning('Error parseing devo:\n')
 
@@ -162,17 +167,18 @@ class UtmostDevoSource(object):
             logging.warning('Error fetching verse:\n' + str(e))
             return None
 
-        self.devo_object.link_to_full_verse_yv = self.__get_youversion_link(self.devo_object.verse_reference)
-        self.__parse_biblegateway_com(result.content)
+        self.devo_object.link_to_full_verse_yv = self.__get_youversion_link(verse_ref=self.devo_object.verse_reference,
+                                                                            version=version)
+        parse_status = self.__parse_biblegateway_com(result.content)
 
         logging.info("Parsing Success:: All content parsed successfuly.")
-        final_devo = self.devo_object.format_to_message()
+        final_devo = self.devo_object.format_to_message(version_abbv=version)
 
         # cache
         if self.STORE_CACHE:
             logging.debug("Storing devo in memcache & db {}".format(memkey))
             memcache.set(memkey, final_devo)
-            update_material(material,final_devo)
+            update_material(material, final_devo)
 
         return devo_dynamic_header + final_devo
 
@@ -191,11 +197,10 @@ class UtmostDevoSource(object):
             demarc = verse_consise.index("—".decode("utf-8"))
             verse_consise = verse_consise[:demarc]
             verse_reference = soup.select_one('#key-verse-box > p > a').text
-            post = soup.select_one('.post-content').text.replace("\n", "\n\n")
-            link_to_verse = soup.select_one('#key-verse-box > p > a').get("href").strip().replace("31",
-                                                                                                  "ESV")  ## defaults to niv bleh
+            post = self.strip_markdown(soup.select_one('.post-content').text.replace("\n", "\n\n"))
+            link_to_verse = soup.select_one('#key-verse-box > p > a').get("href").strip()
 
-            bible_in_a_year = soup.select_one('#bible-in-a-year-box > a').get("href").strip().replace("31", "ESV")
+            bible_in_a_year = soup.select_one('#bible-in-a-year-box > a').get("href").strip()
             bible_in_a_year_text = "[" + soup.select_one('#bible-in-a-year-box > a').text.replace("; ",
                                                                                                   "\n") + "](" + bible_in_a_year + ")"
 
@@ -299,9 +304,17 @@ class UtmostDevoSource(object):
         self.devo_object.verse_full = final_text.strip()
         return
 
-    def __get_youversion_link(self, verse_ref):
-        DEFAULT_VERSION = 59  # ESV
-        URL = "https://www.bible.com/bible/{}/".format(DEFAULT_VERSION)
+    def __get_youversion_link(self, verse_ref, version):
+
+        version_map = {
+            "ESV": "59",
+            "AMP": "8",
+            "NLT": "116",
+            "MSG": "97",
+            "NKJV": "114"
+        }
+
+        URL = "https://www.bible.com/bible/{}/".format(version_map[version])
 
         def modify_verse_ref(ref):
             book_lookup = {
