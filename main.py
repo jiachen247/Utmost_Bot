@@ -360,16 +360,23 @@ class UtmostPage(webapp2.RequestHandler):
     FEEDBACK_SUCCESS = 'Your message has been sent to my developer. ' + \
                        'Thanks for your feedback, {}!'
 
-    VERSION_SET = 'Hello *{}*, please select your preferred bible version from the list of supported versions below!\n\n'
+    VERSION_SET = 'Hello *{}*, please select your preferred bible version from the list below! ' \
+                  '(_When in doubt, always go for your fav fruit | cant go wrong there_)\n\n'
+
     VERSION_SET_GROUP = 'Hello, friends in *{}*. Please select your preferred bible version from the list of ' \
                         'supported versions below!\n\n'
 
-    VERSION_SET_CURRENT = "You are currently using `{}`!"
+    VERSION_SET_CURRENT = "You are currently using `{}` "
+
+    VERSION_UPDATE_SUCCESS_CALLBACK = "Success! Bible version updated:)"
+
+    VERSION_UPDATE_SUCCESS = "_Congratulations!_ You have updated your bible version successfully from *{}* to *{}*. " \
+                             "Enjoy reading the verses in the new version :) ".format
 
     UNRECOGNISED = 'Sorry {}, I couldn\'t understand that. ' + \
                    'Please enter one of the following commands:'
 
-    def handle_message(self,msg):
+    def handle_message(self, msg):
         msg_chat = msg.get('chat')
         msg_from = msg.get('from')
 
@@ -544,13 +551,6 @@ class UtmostPage(webapp2.RequestHandler):
             send_message(user, response, force_reply=True)
 
         elif is_command_equals('bible'):
-            current_version = V.get_version_string(user.version)
-            response = self.VERSION_SET.format(actual_name) + self.VERSION_SET_CURRENT.format(current_version)
-
-            if user.is_group():
-                response = self.VERSION_SET_GROUP.format(actual_name) + self.VERSION_SET_CURRENT.format(current_version)
-
-            all_versions = V.get_all_versions_in_string()
             emoticons = ["\xF0\x9F\x8D\x89",
                          "\xF0\x9F\x8D\x8A",
                          "\xF0\x9F\x8D\x8C",
@@ -559,11 +559,24 @@ class UtmostPage(webapp2.RequestHandler):
                          "\xF0\x9F\x8D\x91",
                          "\xF0\x9F\x8D\x92",
                          "\xF0\x9F\x8D\x93"]
+
+            current_version = V.get_version_string(user.version)
+            all_versions = V.get_all_versions_in_string()
+            current_emoticon = None
+
             ik = list()
             for count, version in enumerate(all_versions):
                 if current_version == version:
+                    current_emoticon = emoticons[count]
                     continue
-                ik.append([{'text': emoticons[count].decode("utf-8") + version, 'callback_data': str(count)}])
+                ik.append([{'text': emoticons[count].decode("utf-8") + " " + version, 'callback_data': str(count)}])
+
+            response = self.VERSION_SET.format(actual_name) + self.VERSION_SET_CURRENT.format(current_version)
+            response += current_emoticon
+
+            if user.is_group():
+                response = self.VERSION_SET_GROUP.format(actual_name) + self.VERSION_SET_CURRENT.format(current_version)
+                response += current_emoticon
 
             send_message(user, response, disable_web_page_preview=True, markdown=True,
                          inline_keyboard=ik)
@@ -581,7 +594,7 @@ class UtmostPage(webapp2.RequestHandler):
 
             send_message(user, response)
 
-    def handle_callback_query(self,callback_query):
+    def handle_callback_query(self, callback_query):
         qid = callback_query.get('id')
         data = callback_query.get('data')
 
@@ -601,17 +614,23 @@ class UtmostPage(webapp2.RequestHandler):
         user = update_profile(uid, fname=first_name, lname=last_name, uname=username)
 
         try:
-            logging.debug("callback data -   " + data )
-            version = int(data)
+            logging.debug("callback data -   " + data)
+            new_version_no = int(data)
+            old_version_no = user.version
 
-            if V.validate_version(version):
-                user.version = version
+            new_version_name = V.get_version_letters(new_version_no)
+            old_version_name = V.get_version_letters(old_version_no)
+
+            if V.validate_version(new_version_no):
+                user.version = new_version_no
                 user.put()
+                self.answer_callback_query(qid, self.VERSION_UPDATE_SUCCESS_CALLBACK)
+                send_message(uid, self.VERSION_UPDATE_SUCCESS(old_version_name, new_version_name), markdown=True)
+            else:
+                raise Exception("callback data failed validation")
         except Exception as e:
             logging.debug(str(e))
 
-        status = "need to update status"
-        self.answer_callback_query(qid,status)
         return
 
     def answer_callback_query(self, qid, status):

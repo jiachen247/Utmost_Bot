@@ -19,11 +19,10 @@ class Version():
                 ]
 
     def validate_version(self, letters):
-        for _version in self.__versions:
-            if _version['letters'] is letters.upper():
-                return True
-        else:
-            return False
+        # for _version in self.__versions:
+        #     if _version['letters'] is letters.upper():
+        #         return True
+        return letters in range(len(self.__versions))
 
     def get_all_versions_in_string(self):
         data = list()
