@@ -112,7 +112,7 @@ class UtmostDevoSource(object):
     def strip_markdown(self, string):
         return string.replace('*', ' ').replace('_', ' ').replace('[', '\[')
 
-    def get_devo(self, delta=0, version="esv"):
+    def get_devo(self, delta=0, version="ESV"):
 
         today_date = datetime.utcnow() + timedelta(hours=8, days=delta)
 
@@ -311,7 +311,8 @@ class UtmostDevoSource(object):
             "AMP": "8",
             "NLT": "116",
             "MSG": "97",
-            "NKJV": "114"
+            "NKJV": "114",
+            "NIV": "111"
         }
 
         URL = "https://www.bible.com/bible/{}/".format(version_map[version])
