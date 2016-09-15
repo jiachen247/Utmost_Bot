@@ -391,6 +391,7 @@ class UtmostPage(webapp2.RequestHandler):
         msg_chat = msg.get('chat')
         msg_from = msg.get('from')
         mid = msg.get("message_id")
+        actual_group_name = ""
 
         if msg_chat.get('type') == 'private':
             uid = msg_from.get('id')
@@ -402,6 +403,7 @@ class UtmostPage(webapp2.RequestHandler):
             first_name = msg_chat.get('title')
             last_name = None
             username = None
+            actual_group_name = msg_chat.get('title').encode('utf-8', 'ignore').strip()
 
         user = update_profile(uid, username, first_name, last_name)
 
@@ -415,6 +417,7 @@ class UtmostPage(webapp2.RequestHandler):
         if actual_last_name:
             actual_last_name = actual_last_name.encode('utf-8', 'ignore').strip()
         text = msg.get('text')
+
         if text:
             text = text.encode('utf-8', 'ignore')
 
@@ -588,7 +591,7 @@ class UtmostPage(webapp2.RequestHandler):
             response += current_emoticon
 
             if user.is_group():
-                response = self.VERSION_SET_GROUP.format(user.first_name) + self.VERSION_SET_CURRENT.format(
+                response = self.VERSION_SET_GROUP.format(actual_group_name) + self.VERSION_SET_CURRENT.format(
                     current_version)
                 response += current_emoticon
 
