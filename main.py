@@ -364,11 +364,11 @@ class UtmostPage(webapp2.RequestHandler):
                        'Thanks for your feedback, {}!'
 
     VERSION_SET = 'Hello *{}*, please select your preferred bible version from the list below!\n\n' \
-                  "(_When in doubt, always go for your fav fruit | you really can't go wrong there_)\n\n"
+                  "_When in doubt, always go for your fav fruit | you really can't go wrong there :)_\n\n"
 
     VERSION_SET_GROUP = ('Hello, friends in *{}*. Please select your preferred bible version from the list of '
                          'supported versions below!\n\n'
-                         "(_When in doubt, always go for your fav fruit | you really can't go wrong there_ )\n\n")
+                         "_When in doubt, always go for your fav fruit | you really can't go wrong there :)_\n\n")
 
     VERSION_SET_CURRENT = "You are currently using `{}` "
 
@@ -745,8 +745,8 @@ class PromoPage(webapp2.RequestHandler):
             if user.is_group():
                 promo_msg = 'Hello, friends in {}! Do you find Utmost Bot useful?'.format(name)
             else:
-                promo_msg = 'Hi {}, do you find Utmost Bot useful?'.format(name)
-            promo_msg += ' Why not rate it on the bot store (you don\'t have to exit' + \
+                promo_msg = '*1111!!!* Hi {}, do you find Utmost Bot helpful?'.format(name)
+            promo_msg += ' Why not rate it on the bot store so more people can find it (you don\'t have to exit' + \
                          ' Telegram)!\nhttps://telegram.me/storebot?start=utmost\_bot'
             send_message(user, promo_msg, msg_type='promo', markdown=True)
 
