@@ -183,7 +183,10 @@ class UtmostDevoSource(object):
         try:
             self.devo_object.link_to_full_verse_yv = self.__get_youversion_link(verse_ref=self.devo_object.verse_reference,
                                                                                 version=version)
+
             parse_status = self.__parse_biblegateway_com(result.content)
+
+
 
             logging.info("Parsing Success:: All content parsed successfuly.")
             final_devo = self.devo_object.format_to_message(version_abbv=version)
@@ -353,7 +356,7 @@ class UtmostDevoSource(object):
                 'Nehemiah': 'neh',
                 'Esther': 'est',
                 'Job': 'job',
-                'Psalms': 'psa',
+                'Psalm': 'psa',
                 'Proverbs': 'pro',
                 'Ecclesiastes': 'ecc',
                 'Song of Solomon': 'sng',
@@ -402,6 +405,8 @@ class UtmostDevoSource(object):
                 'Jude': 'jud',
                 'Revelation': 'rev'
             }
+
+            logging.info("ref - " + ref)
             for old_name, new_name in book_lookup.iteritems():
                 if ref.startswith(old_name):
                     return ref.replace(old_name, new_name).replace(" ", ".").replace(":", ".")

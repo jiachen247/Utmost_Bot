@@ -713,7 +713,6 @@ class SendPage(webapp2.RequestHandler):
 
         try:
             for user in query.run(batch_size=500):
-
                 send_message(user, devos[user.version], msg_type='daily', markdown=True, disable_web_page_preview=True)
                 # send_message(user, RESPONSE_QN, markdown=True, force_reply=True)
         except Exception as e:
