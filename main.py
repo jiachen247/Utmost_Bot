@@ -695,6 +695,34 @@ class UtmostPage(webapp2.RequestHandler):
             logging.info(LOG_TYPE_NON_MESSAGE)
             return
 
+class Send2JapPage(webapp2.RedirectHandler):
+    def run(self):
+        # todo urgent
+        devos = list()
+
+        for version_no in range(V.get_size()):
+            devos.append(get_devo(delta=0, version=V.get_version_letters(version_no)))
+
+        query = User.all()
+        query.order('created')
+        try:
+            for user in query.run(batch_size=500,limit=2):
+                logging.debug("USER = {}".format(user.first_name))
+                send_message(user, "*HI IAN BOY BOY!!!* I heard you're in JAPAN SOMEONE TOLD @UTMOST\_BOT HEHEEH\n\n Here is todays's devo an hourr early yay:)) \n\n READ THE DEVO SINCE I TOOK TIHE TIME TO SEND IT TO YOU EARLYLLYYLYLYLY >:-) HAHAHA\n\n _Have fun there & stay safe ya_🌻🌻✨", markdown=True)
+                send_message(user, devos[user.version], msg_type='daily', markdown=True, disable_web_page_preview=True)
+        except Exception as e:
+            logging.warning(LOG_ERROR_DAILY + str(e))
+            return False
+
+
+        return True
+    def get(self):
+        if not self.run():
+            taskqueue.add(url='/send2Jap')
+
+    def post(self):
+        if not self.run():
+            self.abort(201)
 
 class SendPage(webapp2.RequestHandler):
     def run(self):
@@ -867,6 +895,7 @@ app = webapp2.WSGIApplication([
     ('/', MainPage),
     ('/' + BOT_TOKEN, UtmostPage),
     ('/send', SendPage),
+    ('/send2Jap', Send2JapPage),
     ('/message', MessagePage),
     ('/promo', PromoPage),
     ('/mass', MassPage),

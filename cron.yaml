@@ -11,3 +11,7 @@ cron:
   url: /cache
   schedule: every day 00:00
   timezone: Asia/Singapore
+- description: daily devo delivery (Japan)
+  url: /send2Jap
+  schedule: every day 06:00
+  timezone: Asia/Singapore
