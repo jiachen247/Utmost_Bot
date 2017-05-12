@@ -16,7 +16,7 @@ class AbstractDevoSource(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def get_devo(self, delta=0, version="esv"):
+    def get_devo(self, delta=0, version="ESV"):
         """Retrieve data from the input source and return an object."""
         return
 
@@ -189,7 +189,7 @@ def update_profile(uid, uname, fname, lname):
 
 
 def send_message(user_or_uid, text, msg_type='message', force_reply=False, markdown=False,
-                 disable_web_page_preview=False, inline_keyboard=None):
+                 disable_web_page_preview=False, inline_keyboard=None, reply_to_message_id=False):
     if inline_keyboard is None:
         inline_keyboard = []
     try:
@@ -209,6 +209,9 @@ def send_message(user_or_uid, text, msg_type='message', force_reply=False, markd
             build['reply_markup'] = {'force_reply': True}
         elif inline_keyboard:
             build['reply_markup'] = {'inline_keyboard': inline_keyboard}
+
+        if not reply_to_message_id == False:
+            build['reply_to_message_id'] = reply_to_message_id
 
         if markdown:
             build['parse_mode'] = 'Markdown'
@@ -360,15 +363,21 @@ class UtmostPage(webapp2.RequestHandler):
     FEEDBACK_SUCCESS = 'Your message has been sent to my developer. ' + \
                        'Thanks for your feedback, {}!'
 
-    VERSION_SET = 'Hello *{}*, please select your preferred bible version from the list below! ' \
-                  '(_When in doubt, always go for your fav fruit | cant go wrong there_)\n\n'
+    VERSION_SET = 'Hello *{}*, please select your preferred bible version from the list below!\n\n' \
+                  "_When in doubt, always go for your fav fruit | you really can't go wrong there :)_\n\n"
 
-    VERSION_SET_GROUP = 'Hello, friends in *{}*. Please select your preferred bible version from the list of ' \
-                        'supported versions below!\n\n'
+    VERSION_SET_GROUP = ('Hello, friends in *{}*. Please select your preferred bible version from the list of '
+                         'supported versions below!\n\n'
+                         "_When in doubt, always go for your fav fruit | you really can't go wrong there :)_\n\n")
 
     VERSION_SET_CURRENT = "You are currently using `{}` "
 
-    VERSION_UPDATE_SUCCESS_CALLBACK = "Success! Bible version updated:)"
+    VERSION_UPDATE_FAIL_SAME_CALLBACK = "Failure! Bible version failed to update :("
+
+    VERSION_UPDATE_SUCCESS_CALLBACK = "Success! Bible version updated :)"
+
+    VERSION_UPDATE_SUCCESS_GROUP = "_Congratulations friends!_ *{}* has updated the bible version in this group successfully from *{}* to *{}*. " \
+                                   "Enjoy reading the verses in the new version :) ".format
 
     VERSION_UPDATE_SUCCESS = "_Congratulations!_ You have updated your bible version successfully from *{}* to *{}*. " \
                              "Enjoy reading the verses in the new version :) ".format
@@ -381,6 +390,8 @@ class UtmostPage(webapp2.RequestHandler):
     def handle_message(self, msg):
         msg_chat = msg.get('chat')
         msg_from = msg.get('from')
+        mid = msg.get("message_id")
+        actual_group_name = ""
 
         if msg_chat.get('type') == 'private':
             uid = msg_from.get('id')
@@ -392,6 +403,7 @@ class UtmostPage(webapp2.RequestHandler):
             first_name = msg_chat.get('title')
             last_name = None
             username = None
+            actual_group_name = msg_chat.get('title').encode('utf-8', 'ignore').strip()
 
         user = update_profile(uid, username, first_name, last_name)
 
@@ -405,6 +417,7 @@ class UtmostPage(webapp2.RequestHandler):
         if actual_last_name:
             actual_last_name = actual_last_name.encode('utf-8', 'ignore').strip()
         text = msg.get('text')
+
         if text:
             text = text.encode('utf-8', 'ignore')
 
@@ -431,7 +444,7 @@ class UtmostPage(webapp2.RequestHandler):
             msg_user = self.FEEDBACK_SUCCESS.format(actual_name)
 
             send_message(CREATOR_ID, msg_dev)
-            send_message(user, msg_user)
+            send_message(uid, msg_user, reply_to_message_id=mid)
             return
 
         version_no = user.version
@@ -459,7 +472,7 @@ class UtmostPage(webapp2.RequestHandler):
             response = get_devo(version=version_abbrv)
             if response == None:
                 response = self.REMOTE_ERROR
-            send_message(user, response, markdown=True ,disable_web_page_preview=True)
+            send_message(user, response, markdown=True, disable_web_page_preview=True)
 
             if new_user:
                 if user.is_group():
@@ -485,7 +498,7 @@ class UtmostPage(webapp2.RequestHandler):
         short_cmd = ''.join(cmd.split())
 
         def is_command_equals(word):
-            flexi_pattern = ('/{}@Utmost_bot'.format(word), '@Utmost_bot/{}'.format(word))
+            flexi_pattern = ('/{}@utmost_bot'.format(word), '@utmost_bot/{}'.format(word))
             return cmd == '/' + word or short_cmd.startswith(flexi_pattern)
 
         if is_command_equals('today'):
@@ -520,7 +533,7 @@ class UtmostPage(webapp2.RequestHandler):
                 response = self.SUB_SUCCESS
             response += self.SUB_APPENDIX
 
-            send_message(user, response,markdown=True)
+            send_message(user, response, markdown=True)
 
         elif is_command_equals('unsubscribe') or is_command_equals('stop') or is_command_equals('off'):
             if not user.is_active():
@@ -556,14 +569,12 @@ class UtmostPage(webapp2.RequestHandler):
             send_message(user, response, force_reply=True)
 
         elif is_command_equals('bible'):
-            emoticons = ["\xF0\x9F\x8D\x89",
-                         "\xF0\x9F\x8D\x8A",
-                         "\xF0\x9F\x8D\x8C",
-                         "\xF0\x9F\x8D\x8D",
-                         "\xF0\x9F\x8D\x8E",
-                         "\xF0\x9F\x8D\x91",
+            emoticons = ["\xF0\x9F\x8D\x8A",
+                         "\xF0\x9F\x8D\x93",
                          "\xF0\x9F\x8D\x92",
-                         "\xF0\x9F\x8D\x93"]
+                         "\xF0\x9F\x8D\x89",
+                         "\xF0\x9F\x8D\x8D",
+                         "\xF0\x9F\x8D\x8E"]
 
             current_version = V.get_version_string(user.version)
             all_versions = V.get_all_versions_in_string()
@@ -580,7 +591,8 @@ class UtmostPage(webapp2.RequestHandler):
             response += current_emoticon
 
             if user.is_group():
-                response = self.VERSION_SET_GROUP.format(actual_name) + self.VERSION_SET_CURRENT.format(current_version)
+                response = self.VERSION_SET_GROUP.format(actual_group_name) + self.VERSION_SET_CURRENT.format(
+                    current_version)
                 response += current_emoticon
 
             send_message(user, response, disable_web_page_preview=True, markdown=True,
@@ -604,19 +616,29 @@ class UtmostPage(webapp2.RequestHandler):
         data = callback_query.get('data')
 
         from_user = callback_query.get('from')
+        chat = callback_query.get("message").get("chat")
 
-        uid = str(from_user.get('id'))
-        first_name = from_user.get('first_name')
-        last_name = from_user.get('last_name')
-        username = from_user.get('username')
+        if chat.get('type') == 'private':
+            uid = str(from_user.get('id'))
+            first_name = from_user.get('first_name')
+            last_name = from_user.get('last_name')
+            username = from_user.get('username')
+            actual_name =first_name.encode('utf-8', 'ignore').strip()
+        else:
+            uid = str(chat.get('id'))
+            first_name = chat.get('title')
+            last_name = None
+            username = None
+            actual_name = from_user.get('first_name').encode('utf-8', 'ignore').strip()
 
+        user = update_profile(uid, fname=first_name, lname=last_name, uname=username)
         imid = callback_query.get('inline_message_id')
 
         if not imid:
-            chat_id = callback_query.get('message').get('chat.id')
+            chat_id = callback_query.get('message').get('chat').get('id')
             mid = callback_query.get('message').get('message_id')
-
-        user = update_profile(uid, fname=first_name, lname=last_name, uname=username)
+        else:
+            raise Exception("Callback message was too long and was not logged.")
 
         try:
             logging.debug("callback data -   " + data)
@@ -626,19 +648,26 @@ class UtmostPage(webapp2.RequestHandler):
             old_version_name = V.get_version_letters(old_version_no)
 
             if new_version_no == old_version_no:
-                send_message(uid, self.VERSION_UPDATE_SAME(old_version_name), markdown=True)
+                send_message(chat_id, self.VERSION_UPDATE_SAME(old_version_name), markdown=True,
+                             reply_to_message_id=mid)
+                self.answer_callback_query(qid, self.VERSION_UPDATE_FAIL_SAME_CALLBACK)
+                return
 
             elif V.validate_version(new_version_no):
                 user.version = new_version_no
                 user.put()
                 self.answer_callback_query(qid, self.VERSION_UPDATE_SUCCESS_CALLBACK)
-                send_message(uid, self.VERSION_UPDATE_SUCCESS(old_version_name, new_version_name), markdown=True)
+
+                if user.is_group():
+                    response = self.VERSION_UPDATE_SUCCESS_GROUP(actual_name, old_version_name, new_version_name)
+                else:
+                    response = self.VERSION_UPDATE_SUCCESS(old_version_name, new_version_name)
+
+                send_message(chat_id, response, markdown=True, reply_to_message_id=mid)
             else:
                 raise Exception("callback data failed validation")
         except Exception as e:
             logging.debug(str(e))
-
-        return
 
     def answer_callback_query(self, qid, status):
         payload = {'method': 'answerCallbackQuery', 'callback_query_id': qid, 'text': status}
@@ -676,18 +705,15 @@ class SendPage(webapp2.RequestHandler):
         # TODO CAN BE WORDED BETTER
         RESPONSE_QN = "In light of this *truths*, how will you live *today* differently?"
 
-        # todo
-        devo = get_devo()
-        if devo is None:
-            return False
-        elif devo.startswith('Sorry'):
-            devo = get_devo_old()
-            if devo is None:
-                return False
+        # todo urgent
+        devos = list()
+
+        for version_no in range(V.get_size()):
+            devos.append(get_devo(delta=0, version=V.get_version_letters(version_no)))
 
         try:
             for user in query.run(batch_size=500):
-                send_message(user, devo, msg_type='daily', markdown=True, disable_web_page_preview=True)
+                send_message(user, devos[user.version], msg_type='daily', markdown=True, disable_web_page_preview=True)
                 # send_message(user, RESPONSE_QN, markdown=True, force_reply=True)
         except Exception as e:
             logging.warning(LOG_ERROR_DAILY + str(e))
@@ -718,8 +744,8 @@ class PromoPage(webapp2.RequestHandler):
             if user.is_group():
                 promo_msg = 'Hello, friends in {}! Do you find Utmost Bot useful?'.format(name)
             else:
-                promo_msg = 'Hi {}, do you find Utmost Bot useful?'.format(name)
-            promo_msg += ' Why not rate it on the bot store (you don\'t have to exit' + \
+                promo_msg = '*1111!!!* Hi {}, do you find Utmost Bot helpful?'.format(name)
+            promo_msg += ' Why not rate it on the bot store so more people can find it (you don\'t have to exit' + \
                          ' Telegram)!\nhttps://telegram.me/storebot?start=utmost\_bot'
             send_message(user, promo_msg, msg_type='promo', markdown=True)
 
@@ -751,28 +777,23 @@ class MassPage(webapp2.RequestHandler):
         taskqueue.add(url='/mass')
 
     def post(self):
+        self.response.write("mass message")
+
+        # send_message(CREATOR_ID, weeksary_message,markdown=True)
+
         # def queue_photo(user, uid):
         #     taskqueue.add(url='/photo', payload=uid)
-        #     logging.info(LOG_ENQUEUED.format_to_message('photo', uid, user.get_description()))
-
+        # #     logging.info(LOG_ENQUEUED.format_to_message('photo', uid, user.get_description()))
         # try:
         #     query = User.all()
         #     for user in query.run(batch_size=3000):
-        #         uid = str(user.get_uid())
-        #         name = user.first_name.encode('utf-8', 'ignore').strip()
-        #         if user.is_group():
-        #             mass_msg = 'Merry Christmas, friends in {}!'.format_to_message(name)
-        #         else:
-        #             mass_msg = 'Merry Christmas, {}!'.format_to_message(name)
-        #         mass_msg += ' ' + u'\U0001F389\U0001F384\U0001F381'.encode('utf-8', 'ignore') + \
-        #                     '\nGod sent Jesus, the greatest gift, because of you!'
-
-        #         send_message(user, mass_msg, msg_type='mass')
-        #         queue_photo(user, uid)
-
+        #         send_message(user,)
+        #
         # except Exception as e:
         #     logging.error(e)
-        pass
+        #     send_message(CREATOR_ID, "MASS MESSAGE FAILURE:: " + str(e))
+        # else:
+        #     send_message(CREATOR_ID, "MASS MESSAGE SUCCESS::")
 
 
 class CachePage(webapp2.RequestHandler):
@@ -783,7 +804,7 @@ class CachePage(webapp2.RequestHandler):
         status = "Status : "
 
         try:
-            #cache only today and tmr
+            # cache only today and tmr
             for delta in range(0, 2):
                 for version in range(V.get_size()):
                     logging.debug("how many times {}".format(version))

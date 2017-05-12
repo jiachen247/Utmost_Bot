@@ -15,6 +15,7 @@ class Version():
         {"title": "New Living Translation ({})".format, "letters": "NLT"},
         {"title": "The Message ({})".format, "letters": "MSG"},
         {"title": "New Kings James Version ({})".format, "letters": "NKJV"},
+        {"title": "New International Version ({})".format, "letters": "NIV"}
     ]
 
     def get_size(self):

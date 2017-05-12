@@ -112,7 +112,7 @@ class UtmostDevoSource(object):
     def strip_markdown(self, string):
         return string.replace('*', ' ').replace('_', ' ').replace('[', '\[')
 
-    def get_devo(self, delta=0, version="esv"):
+    def get_devo(self, delta=0, version="ESV"):
 
         today_date = datetime.utcnow() + timedelta(hours=8, days=delta)
 
@@ -143,23 +143,36 @@ class UtmostDevoSource(object):
             logging.warning('Error fetching devo:\n' + str(e))
             return None
 
-        parse_status = self.__parse_utmost_org(result.content, today_date)
+        try:
+            parse_status = self.__parse_utmost_org(result.content, today_date)
 
-        self.devo_object.link_to_full_verse_bgw = self.devo_object.link_to_full_verse_bgw.replace("31", version)
-        self.devo_object.bible_in_a_year = self.devo_object.bible_in_a_year.replace("31", version)
+            def replaceDefaultVersion(url, newVersion):
+                default = 31
+                versionFormat = "version={}".format
+                defaultVersionString = versionFormat(default)
+                newVersionString = versionFormat(newVersion)
 
-        logging.debug("link_to_full_verse__bgw : {}".format(self.devo_object.link_to_full_verse_bgw))
-        logging.debug("bible in a year : {}".format(self.devo_object.bible_in_a_year))
+                return url.replace(defaultVersionString, newVersionString)
 
-        if not parse_status:
-            logging.warning('Error parseing devo:\n')
+            self.devo_object.link_to_full_verse_bgw = replaceDefaultVersion(self.devo_object.link_to_full_verse_bgw,
+                                                                            version)
+            self.devo_object.bible_in_a_year = replaceDefaultVersion(self.devo_object.bible_in_a_year, version)
 
-            if delta == self.YESTERDAY:
-                return 'Sorry, yesterday\'s material is no longer available.'
-            elif delta == self.TODAY:
-                return 'Sorry, today\'s material is not available.'
-            elif delta == self.TOMORROW:
-                return 'Sorry, tomorrows\'s material is no longer available.'
+            logging.debug("link_to_full_verse__bgw : {}".format(self.devo_object.link_to_full_verse_bgw))
+            logging.debug("bible in a year : {}".format(self.devo_object.bible_in_a_year))
+
+            if not parse_status:
+                logging.warning('Error parseing devo:\n')
+
+                if delta == self.YESTERDAY:
+                    return 'Sorry, yesterday\'s material is no longer available.'
+                elif delta == self.TODAY:
+                    return 'Sorry, today\'s material is not available.'
+                elif delta == self.TOMORROW:
+                    return 'Sorry, tomorrows\'s material is no longer available.'
+        except Exception as e:
+            logging.warning('Error parsing utmost devo:\n' + str(e))
+            return None
 
         try:
             result = urlfetch.fetch(self.devo_object.link_to_full_verse_bgw, deadline=10)
@@ -167,13 +180,19 @@ class UtmostDevoSource(object):
             logging.warning('Error fetching verse:\n' + str(e))
             return None
 
-        self.devo_object.link_to_full_verse_yv = self.__get_youversion_link(verse_ref=self.devo_object.verse_reference,
-                                                                            version=version)
-        parse_status = self.__parse_biblegateway_com(result.content)
+        try:
+            self.devo_object.link_to_full_verse_yv = self.__get_youversion_link(verse_ref=self.devo_object.verse_reference,
+                                                                                version=version)
 
-        logging.info("Parsing Success:: All content parsed successfuly.")
-        final_devo = self.devo_object.format_to_message(version_abbv=version)
+            parse_status = self.__parse_biblegateway_com(result.content)
 
+
+
+            logging.info("Parsing Success:: All content parsed successfuly.")
+            final_devo = self.devo_object.format_to_message(version_abbv=version)
+        except Exception as e:
+            logging.warning('Error parsing verse:\n' + str(e))
+            return None
         # cache
         if self.STORE_CACHE:
             logging.debug("Storing devo in memcache & db {}".format(memkey))
@@ -321,7 +340,8 @@ class UtmostDevoSource(object):
             "AMP": "8",
             "NLT": "116",
             "MSG": "97",
-            "NKJV": "114"
+            "NKJV": "114",
+            "NIV": "111"
         }
 
         URL = "https://www.bible.com/bible/{}/".format(version_map[version])
@@ -346,7 +366,7 @@ class UtmostDevoSource(object):
                 'Nehemiah': 'neh',
                 'Esther': 'est',
                 'Job': 'job',
-                'Psalms': 'psa',
+                'Psalm': 'psa',
                 'Proverbs': 'pro',
                 'Ecclesiastes': 'ecc',
                 'Song of Solomon': 'sng',
@@ -395,6 +415,8 @@ class UtmostDevoSource(object):
                 'Jude': 'jud',
                 'Revelation': 'rev'
             }
+
+            logging.info("ref - " + ref)
             for old_name, new_name in book_lookup.iteritems():
                 if ref.startswith(old_name):
                     return ref.replace(old_name, new_name).replace(" ", ".").replace(":", ".")

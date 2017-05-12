@@ -26,4 +26,18 @@ So far, all usage has been under GAE's free qouta YAYERS:)
 To God be the Glory
 
 
+#Mass Messages
+9/9/16 07:01
+weeksary_message = (
+            "✨* Update 1.01 *✨\n" +
+            "🌞 Happy Saturday 🌞\n\n" +
 
+            "Hello everyone :) Today marks my *1st WEEK-SARY* 💐 I pray & hope that I've been a blessing to y'all over the course of this week, spurring everyone on to a consistent and daily quiet time with God.\n\n" +
+
+            "Due to the overwhelming feedback, today's update includes support for different bible versions! ( _yay finally_ 🎉 )\n\n" +
+
+            "This change would (hopefully) allow for everyone to read God's Word to us in a version that they're most comfortable with. Do try it out with my /bible command!\n\n" +
+
+            "Should you have any further feedback, please do not hesitate to relay it to me via my /feedback command :))\n\n\n" +
+
+            "God Bless🌻\n@Utmost\_bot")
