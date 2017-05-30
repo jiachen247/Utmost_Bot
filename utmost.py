@@ -210,7 +210,7 @@ class UtmostDevoSource(object):
         try:
             soup = BeautifulSoup(html, 'lxml')
 
-            date = today_date.strftime('%b %-d, %Y ({})').format(today_date.strftime('%a').upper())
+            date = today_date.strftime('%b %d, %Y ({})').format(today_date.strftime('%a').upper())
             heading = soup.select_one('.entry-title').text.strip()
             verse_consise = soup.select_one('#key-verse-box > p').text
             demarc = verse_consise.index("—".decode("utf-8"))
