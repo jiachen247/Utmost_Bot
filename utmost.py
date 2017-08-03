@@ -56,6 +56,9 @@ class Utmost_Devo_POJO:
         else:
             devotion += "\n"
 
+        logging.debug("jiache do i get here")
+        logging.debug(self.verse_full)
+
         devotion += (
             '\xF0\x9F\x93\x99	*Scripture ('.decode("utf-8") + version_abbv + ')*\n\n'.decode("utf-8")
             + self.verse_full + '\n\n'
@@ -152,7 +155,7 @@ class UtmostDevoSource(object):
                 defaultVersionString = versionFormat(default)
                 newVersionString = versionFormat(newVersion)
 
-                return url.replace(defaultVersionString, newVersionString)
+                return url.replace(defaultVersionString, newVersionString, 1)
 
             self.devo_object.link_to_full_verse_bgw = replaceDefaultVersion(self.devo_object.link_to_full_verse_bgw,
                                                                             version)
@@ -175,6 +178,7 @@ class UtmostDevoSource(object):
             return None
 
         try:
+            logging.debug(self.devo_object.link_to_full_verse_bgw)
             result = urlfetch.fetch(self.devo_object.link_to_full_verse_bgw, deadline=10)
         except Exception as e:
             logging.warning('Error fetching verse:\n' + str(e))
@@ -183,7 +187,7 @@ class UtmostDevoSource(object):
         try:
             self.devo_object.link_to_full_verse_yv = self.__get_youversion_link(verse_ref=self.devo_object.verse_reference,
                                                                                 version=version)
-
+            logging.debug(result.content)
             parse_status = self.__parse_biblegateway_com(result.content)
 
 
@@ -220,14 +224,9 @@ class UtmostDevoSource(object):
             demarc = verse_consise.index("—".decode("utf-8"))
             verse_consise = verse_consise[:demarc]
             verse_reference = soup.select_one('#key-verse-box > p > a').text
-<<<<<<< HEAD
+
             post = strip_markdown(soup.select_one('.post-content').text.replace("\n", "\n\n"))
-            link_to_verse = soup.select_one('#key-verse-box > p > a').get("href").strip().replace("31",
-                                                                                                  "ESV")  ## defaults to niv bleh
-=======
-            post = self.strip_markdown(soup.select_one('.post-content').text.replace("\n", "\n\n"))
-            link_to_verse = soup.select_one('#key-verse-box > p > a').get("href").strip()
->>>>>>> versions
+            link_to_verse = soup.select_one('#key-verse-box > p > a').get("href").strip()  ## defaults to niv bleh
 
             bible_in_a_year = soup.select_one('#bible-in-a-year-box > a').get("href").strip()
             bible_in_a_year_text = "[" + soup.select_one('#bible-in-a-year-box > a').text.replace("; ",
@@ -287,7 +286,6 @@ class UtmostDevoSource(object):
             return self.devo_object.link_to_full_verse_yv if self.devo_object.link_to_full_verse_yv is not None else self.devo_object.link_to_full_verse_bgw
 
         header = '[' + strip_markdown(title.strip()) + '](' + getVerseHref() + ')'
-
         for tag in soup.select(UNWANTED):
             tag.decompose()
 
@@ -305,7 +303,6 @@ class UtmostDevoSource(object):
                 stripped_text = strip_markdown(unicode(bad_string))
                 bad_string.replace_with(stripped_text)
                 needed_stripping = True
-
         if needed_stripping:
             logging.info('Stripped markdown')
 
@@ -320,7 +317,6 @@ class UtmostDevoSource(object):
         for tag in soup.select('.versenum'):
             num = tag.text.strip()
             tag.string = to_sup(num)
-
         for tag in soup.select('.text'):
             tag.string = tag.text.rstrip()
 
