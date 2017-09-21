@@ -20,18 +20,12 @@ class AbstractDevoSource(object):
         """Retrieve data from the input source and return an object."""
         return
 
-    # deprecieated
-    @abc.abstractmethod
-    def get_devo_old(self, delta=0):
-        """Save the data object to the output."""
-        return
 
 
 AbstractDevoSource.register(UtmostDevoSource)
 
 devo_source = UtmostDevoSource()
 get_devo = devo_source.get_devo
-get_devo_old = devo_source.get_devo_old
 
 V = Version()
 
