@@ -58,7 +58,7 @@ LOG_USER_UNREACHABLE = 'Unable to reach uid {} ({}): {}'
 RECOGNISED_ERROR_PARSE = 'Bad Request: Can\'t parse message text'
 RECOGNISED_ERROR_MIGRATE = 'Bad Request: group chat is migrated to a supergroup chat'
 RECOGNISED_ERRORS = ('PEER_ID_INVALID',
-                     'Bot was blocked by the user',
+                     'Forbidden: bot was blocked by the user',
                      'Forbidden: user is deleted',
                      'Forbidden: user is deactivated',
                      'Forbidden: bot was kicked from the group chat',
@@ -248,7 +248,7 @@ def send_message(user_or_uid, text, msg_type='message', force_reply=False, markd
             data = json.dumps(build)
             queue_message()
 
-        elif handle_response(response, user, uid, msg_type) == False:
+        elif not handle_response(response, user, uid, msg_type):
             queue_message()
 
     if len(text) > 4096:
@@ -262,7 +262,7 @@ def send_message(user_or_uid, text, msg_type='message', force_reply=False, markd
 
 
 def handle_response(response, user, uid, msg_type):
-    if response.get('ok') == True:
+    if response.get('ok'):
         msg_id = str(response.get('result').get('message_id'))
         logging.info(LOG_SENT.format(msg_type.capitalize(), msg_id, uid, user.get_description()))
         user.update_last_sent()
@@ -288,8 +288,11 @@ def handle_response(response, user, uid, msg_type):
             return True
 
         user.set_active(False)
+
         if msg_type == 'promo':
             user.set_promo(False)
+
+        user.put()
 
     return True
 
