@@ -25,13 +25,11 @@ def update_material(material, devo):
     material.put()
 
 
-# still a java programmer at heart HAHA
-class Utmost_Devo_POJO:
+class Utmost_Devo_Object:
     def __init(self):
         # date object storing date for
         self.heading = None
         self.verse_reference = None
-        self.bible_in_a_year = None
         self.verse_concise = None
         self.verse_full = None
         self.post = None
@@ -46,23 +44,20 @@ class Utmost_Devo_POJO:
         def if_concise_is_full():
             return '…'.decode('utf-8') in self.verse_concise
 
-        devotion = self.heading + '*\n'
+        devotion = "*" + self.heading.replace(u"\u2018", "'").replace(u"\u2019", "'")
+        devotion += '*\n'
 
         if if_concise_is_full():
             devotion += "_" + self.verse_concise + '_\n\n'
         else:
             devotion += "\n"
 
-        # todo remove
-        logging.debug(self.verse_full)
-
         devotion += (
             '\xF0\x9F\x93\x99	*Scripture ('.decode("utf-8") + version_abbv + ')*\n\n'.decode("utf-8")
             + self.verse_full + '\n\n'
             + '	\xF0\x9F\x93\x9D *Reflection*'.decode("utf-8")
-            + self.post + "\n"
-            + '💪'.decode("utf-8") + ' *Bible in a Year*\n\n'
-            + self.bible_in_a_year
+            + self.post
+            + "#myUtmostForHisHighest #day{}".format(self.day_of_year)
         )
         return devotion
 
@@ -70,15 +65,11 @@ class Utmost_Devo_POJO:
         # TODO rename
         formated_str_to_return = ""
 
-
         if self.heading is not None:
             formated_str_to_return += self.heading + "\n"
 
         if self.verse_reference is not None:
             formated_str_to_return += self.verse_reference + "\n"
-
-        if self.bible_in_a_year is not None:
-            formated_str_to_return += self.bible_in_a_year + "\n"
 
         if self.verse_concise is not None:
             formated_str_to_return += self.verse_concise + "\n"
@@ -91,13 +82,11 @@ class Utmost_Devo_POJO:
     def is_utmost_parse_success(self):
         return (self.heading is not None
                 and self.verse_reference is not None
-                and self.bible_in_a_year is not None
                 and self.verse_concise is not None
                 and self.post is not None)
 
 
 class UtmostDevoSource(object):
-    DEVO_BASE_URL = "http://jiachen.rocks/mytmpdir/jiachen.html"
     base_devo_url = "https://utmost.org/2004/{0}/{1}?calendar-redirect=true&post-type=post".format
     devo_object = None
     STORE_CACHE = True
@@ -112,27 +101,29 @@ class UtmostDevoSource(object):
     def get_devo(self, delta=0, version="ESV"):
 
         today_date = datetime.utcnow() + timedelta(hours=8, days=delta)
+        today_day_of_year = today_date.timetuple().tm_yday
         date_str = today_date.strftime('%b %-d, %Y ({})').format(today_date.strftime('%a').upper())
 
         daynames = ['Yesterday\'s', 'Today\'s', 'Tomorrow\'s']
-        devo_dynamic_header = '\xF0\x9F\x93\x85 '.decode("utf-8") + ' ' + daynames[delta + 1] + ' QT - _' + date_str + '_\n\n*'
+        devo_dynamic_header = '\xF0\x9F\x93\x85 '.decode("utf-8") + ' ' + daynames[
+            delta + 1] + ' QT - _' + date_str + '_\n\n'
 
         memkey = today_date.strftime("%d-%m-{}".format(version))
         devo = memcache.get(memkey)
 
         if devo is not None:
-            logging.info("memkey {} hit. Returning...".format(memkey))
+            logging.info("[+] memkey {} hit. Returning...".format(memkey))
             return devo_dynamic_header + devo
 
         material = get_material(memkey)
 
         if material.text is not None:
-            logging.info("datastore {} hit. Returning...".format(memkey))
+            logging.info("[+] Datastore {} hit. Returning...".format(memkey))
             memcache.set(memkey, material.text)
             return devo_dynamic_header + material.text
 
-        # lazy init
-        self.devo_object = Utmost_Devo_POJO()
+        self.devo_object = Utmost_Devo_Object()
+        self.devo_object.day_of_year = today_day_of_year
 
         try:
             result = urlfetch.fetch(self.base_devo_url(today_date.month, today_date.day), follow_redirects=True,
@@ -142,7 +133,7 @@ class UtmostDevoSource(object):
             return None
 
         try:
-            parse_status = self.__parse_utmost_org(result.content, today_date)
+            parse_status = self.__parse_utmost_org(result.content)
 
             def replaceDefaultVersion(url, newVersion):
                 default = 31
@@ -154,10 +145,8 @@ class UtmostDevoSource(object):
 
             self.devo_object.link_to_full_verse_bgw = replaceDefaultVersion(self.devo_object.link_to_full_verse_bgw,
                                                                             version)
-            self.devo_object.bible_in_a_year = replaceDefaultVersion(self.devo_object.bible_in_a_year, version)
 
             logging.debug("[+] link_to_full_verse__bgw : {}".format(self.devo_object.link_to_full_verse_bgw))
-            logging.debug("[+] bible in a year : {}".format(self.devo_object.bible_in_a_year))
 
             if not parse_status:
                 logging.warning('[-] Error parseing devo:\n')
@@ -173,26 +162,23 @@ class UtmostDevoSource(object):
             return None
 
         try:
-            logging.debug(self.devo_object.link_to_full_verse_bgw)
             result = urlfetch.fetch(self.devo_object.link_to_full_verse_bgw, deadline=10)
         except Exception as e:
             logging.warning('[-] Error fetching verse:\n' + str(e))
             return None
 
         try:
-            self.devo_object.link_to_full_verse_yv = self.__get_youversion_link(verse_ref=self.devo_object.verse_reference,
-                                                                                version=version)
-            logging.debug(result.content)
+            self.devo_object.link_to_full_verse_yv = self.__get_youversion_link(
+                verse_ref=self.devo_object.verse_reference,
+                version=version)
             self.__parse_biblegateway_com(result.content)
-
-
 
             logging.info("[+] Parsing Success:: All content parsed successfuly.")
             final_devo = self.devo_object.format_to_message(version_abbv=version)
         except Exception as e:
             logging.warning('[-] Error parsing verse:\n' + str(e))
             return None
-        # cache
+
         if self.STORE_CACHE:
             logging.debug("[+] Storing devo in memcache & db {}".format(memkey))
             memcache.set(memkey, final_devo)
@@ -200,8 +186,7 @@ class UtmostDevoSource(object):
 
         return devo_dynamic_header + final_devo
 
-
-    def __parse_utmost_org(self, html, today_date):
+    def __parse_utmost_org(self, html):
         def strip_markdown(string):
             return (string.replace('*', ' ')
                     .replace('_', ' ')
@@ -210,26 +195,20 @@ class UtmostDevoSource(object):
         logging.debug("[+] Starting to parse utmost.org::")
         try:
             soup = BeautifulSoup(html, 'lxml')
-
-            heading = soup.select_one('.entry-title').text.strip()
-            verse_consise = soup.select_one('#key-verse-box > p').text
+            heading = soup.select_one(
+                '.utmost-reading > div.row.title-row > div:nth-of-type(2) > div > h2 > span:nth-of-type(2)').text.strip()
+            verse_consise = soup.select_one('#key-verse-box > h4').text
             demarc = verse_consise.index("—".decode("utf-8"))
             verse_consise = verse_consise[:demarc]
-            verse_reference = soup.select_one('#key-verse-box > p > a').text
+            verse_reference = soup.select_one('#key-verse-box > h4 > a').text
 
             post = strip_markdown(soup.select_one('.post-content').text.replace("\n", "\n\n"))
-            link_to_verse = soup.select_one('#key-verse-box > p > a').get("href").strip()  ## defaults to niv bleh
+            link_to_verse = soup.select_one('#key-verse-box > h4 > a').get("href").strip()  # note: defaults to niv
 
-            bible_in_a_year = soup.select_one('#bible-in-a-year-box > a').get("href").strip()
-            bible_in_a_year_text = "[" + soup.select_one('#bible-in-a-year-box > a').text.replace("; ",
-                                                                                                  "\n") + "](" + bible_in_a_year + ")"
-
-            self.devo_object.date = "" # 21/9 date to be appended outside devo
             self.devo_object.heading = heading
             self.devo_object.verse_concise = verse_consise
             self.devo_object.verse_reference = verse_reference
             self.devo_object.post = post
-            self.devo_object.bible_in_a_year = bible_in_a_year_text
             # IMPT - wont carry on without setting this
             self.devo_object.link_to_full_verse_bgw = link_to_verse
 
